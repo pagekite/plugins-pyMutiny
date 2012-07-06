@@ -4,6 +4,8 @@
 #
 # This is an IRC-to-WWW gateway designed to help Pirates have Meetings.
 #
+VERSION = 'v0.1'
+#
 ################################################################################
 #
 # This program is free software: you can redistribute it and/or modify it under
@@ -22,6 +24,7 @@
 ################################################################################
 #
 # Python standard
+import sys
 import traceback
 # Stuff from PageKite
 import sockschain
@@ -137,6 +140,10 @@ class Mutiny(IrcBot):
 
 if __name__ == "__main__":
   try:
+    if '--version' in sys.argv:
+      print '%s' % VERSION
+      sys.exit(0)
+
     config = {
       'log_path': os.path.expanduser('~/.Mutiny'),
       'lang': 'en',
@@ -170,9 +177,10 @@ if __name__ == "__main__":
 
   except (IndexError, ValueError, OSError, IOError):
     print '%s\n' % traceback.format_exc()
-    print 'Usage: %s <nick> <server>/<channel>' % sys.argv[0]
+    print 'Usage: %s <nick> irc://<server:port>/<channel>' % sys.argv[0]
+    print '       %s <nick> ssl://<server:port>/<channel>' % sys.argv[0]
     print
-    print 'The program will store logs here: %s' % config['log_path']
+    print 'Logs and settings will be stored here: %s' % config['log_path']
     print
     sys.exit(1)
   try:
