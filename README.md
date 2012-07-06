@@ -1,8 +1,10 @@
 # Mutiny.py #
 
+"Mutiny is what you get whan Pirates have Meetings."
+
 This is an HTTP server implementing a web-interface for a single IRC channel,
-geared towards managing structured meetings.  It was written for the Icelandic
-pirate party.
+geared towards accessibility and managing structured meetings.  It was written
+for the Icelandic pirate party.
 
 
 ## Getting started ##
