@@ -21,20 +21,14 @@
 #
 ################################################################################
 #
+# Python standard
 import hashlib
-import json
-import os
-import random
-import re
-import time
-import traceback
-import urllib
-
+# Stuff from PageKite
 import sockschain
 import HttpdLite
-
-from io import SelectLoop, Connect
-from irc import IrcClient, IrcBot
+# Stuff from Mutiny
+from mutiny.io import SelectLoop, Connect
+from mutiny.irc import IrcClient, IrcBot
 
 
 html_escape_table = {
@@ -59,11 +53,12 @@ class Mutiny:
 
   def __init__(self, config, nickname, server, channels):
     self.log_path = config['log_path']
-    self.language = config['lang']
+    self.config = config
     self.listen_on = ('localhost', 4950)  # 99 bottles of beer on the wall!
 
     self.select_loop = SelectLoop()
-    self.bot = IrcBot(nickname, channels)
+    self.select_loop.DEBUG = self.config.get('debug', False)
+    self.bot = IrcBot().set_nickname(nickname).set_channels(channels)
 
     if ':' in server:
       self.proto, server = server.split(':', 1)
@@ -173,7 +168,7 @@ if __name__ == "__main__":
 
     nickname = sys.argv[1].replace(' ', '_')
     server = sys.argv[2].rsplit('/', 1)[0]
-    channels = sys.argv[2].split('/', 1)[1].split(',', 1)
+    channels = sys.argv[2].rsplit('/', 1)[1].split(',', 1)
 
     mutiny = Mutiny(config,  nickname, server, channels)
 

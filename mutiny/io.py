@@ -21,16 +21,20 @@
 #
 ################################################################################
 #
+# Python standard
 import errno
 import select
 import socket
-import sockschain
 import threading
+# Stuff from PageKite
+import sockschain
+from sockschain import SSL
 
 
 class SelectLoop(threading.Thread):
   """This class implements a select loop in a thread of its own."""
 
+  DEBUG = False
   HARMLESS_ERRNOS = (errno.EINTR, errno.EAGAIN, errno.ENOMEM, errno.EBUSY,
                      errno.EDEADLK, errno.EWOULDBLOCK, errno.ENOBUFS,
                      errno.EALREADY)
@@ -48,7 +52,8 @@ class SelectLoop(threading.Thread):
 
   def sendall(self, fd, data):
     try:
-      print '>>> %s' % data.encode('string_escape')
+      if self.DEBUG:
+        print '>>> %s' % data.encode('string_escape')
       return fd.sendall(data)
     except SSL.WantWriteError:
       return self.sendall(fd, data)
@@ -63,14 +68,17 @@ class SelectLoop(threading.Thread):
       for fd in ready:
         try:
           data = fd.recv(32*1024)
-          print '<<< %s' % data.encode('string_escape')
+          if self.DEBUG:
+            print '<<< %s' % data.encode('string_escape')
           self.connections[fd].process_data(data,
                                             lambda d: self.sendall(fd, d))
+          if data == '':
+            del self.connections[fd]
         except SSL.WantReadError:
           pass
         except IOError, err:
           if err.errno not in self.HARMLESS_ERRNOS:
-            del selfconnections[fd]
+            del self.connections[fd]
         except socket.error, (errno, msg):
           if errno not in self.HARMLESS_ERRNOS:
             del self.connections[fd]

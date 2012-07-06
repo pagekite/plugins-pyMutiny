@@ -2,7 +2,7 @@ bin/Mutiny.py: mutiny/app.py mutiny/io.py mutiny/irc.py ../HttpdLite/HttpdLite.p
 	breeder --compress --header header.txt \
                 ../../PySocksipyChain/sockschain \
                 ../HttpdLite/HttpdLite.py \
-                mutiny/io.py mutiny/irc.py mutiny/app.py \
+                mutiny/__init__.py mutiny/io.py mutiny/irc.py mutiny/app.py \
                 >bin/Mutiny.py
 	chmod +x bin/Mutiny.py
 
