@@ -41,3 +41,13 @@ The combined "binary" is generated using
 
    * ...
 
+
+## Credits ##
+
+Created by Bjarni R. Einarsson <http://bre.klaki.net/> for the fledgeling
+Icelandic Pirate Party.
+
+Other contributors:
+
+   * *your name here!*
+
