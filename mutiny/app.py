@@ -51,8 +51,10 @@ def sha1sig(parts):
 
 
 class Mutiny:
-  def __init__(self, db_path):
-    pass
+  def __init__(self, log_path):
+    self.log_path = log_path
+    self.listen_on = ('localhost', 4950)  # 99 bottles of beer on the wall!
+    os.mkdir(self.log_path)
 
   def stop(self):
     pass
@@ -111,7 +113,7 @@ class Mutiny:
 if __name__ == "__main__":
   try:
     log_path = os.path.expanduser('~/.Mutiny')
-    mutiny = Mutiny(home_path)
+    mutiny = Mutiny(log_path)
   except (IndexError, ValueError, OSError, IOError):
     print 'Usage: %s' % sys.argv[0]
     print

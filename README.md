@@ -13,7 +13,7 @@ Quick-start:
 
    1. Download [Mutiny.combined.py](https://raw.github.com/pagekite/plugins-pyMutiny/master/bin/Mutiny.combined.py)
    2. In a console: `python ./Mutiny.combined.py BOTNAME irc.server.net:#channel`
-   3. Open up `http://localhost:2127/` in your browser
+   3. Open up `http://localhost:4950/` in your browser
 
 You should now be able to see what is going on in the channel.
 
