@@ -1,4 +1,4 @@
-# Mutiny.py #
+# mutiny.py #
 
 "Mutiny is what you get whan Pirates have Meetings."
 
@@ -11,8 +11,8 @@ for the Icelandic pirate party.
 
 Quick-start:
 
-   1. Download [Mutiny.combined.py](https://raw.github.com/pagekite/plugins-pyMutiny/master/bin/Mutiny.combined.py)
-   2. In a console: `python ./Mutiny.combined.py BOTNAME irc.server.net:#channel`
+   1. Download [mutiny-v0.1.py](https://raw.github.com/pagekite/plugins-pyMutiny/master/bin/mutiny-v0.1.py)
+   2. In a console: `python ./mutiny-v0.1.py BOTNAME irc.server.net:#channel`
    3. Open up `http://localhost:4950/` in your browser
 
 You should now be able to see what is going on in the channel.
@@ -25,12 +25,13 @@ You should now be able to see what is going on in the channel.
 
 ## Hacking ##
 
-The file `Mutiny.combined.py` is combination of `Mutiny.py` and the
-`HttpdLite.py` module it depends on.  For hacking, you'll want to check
-both out from [github](https://github.com/):
+The file `mutiny-XXX.py` is combination of `Mutiny` and the non-standard
+modules it depends on.  For hacking, you'll want to check them all out from
+[github](https://github.com/):
 
-   * [Mutiny.py](https://github.com/pagekite/plugins-pyMutiny)
-   * [HttpdLite.py](https://github.com/pagekite/plugins-pyHttpdLite)
+   * [Mutiny](https://github.com/pagekite/plugins-pyMutiny)
+   * [HttpdLite](https://github.com/pagekite/plugins-pyHttpdLite)
+   * [SocksipyChain](https://github.com/pagekite/pySocksipyChain)
 
 The combined "binary" is generated using
 [Breeder](https://github.com/pagekite/PyBreeder).
