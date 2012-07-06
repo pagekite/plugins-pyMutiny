@@ -41,23 +41,31 @@ def GetUID():
 class IrcClient:
   """This is a bare-bones IRC client which logs on and ping/pongs."""
 
+  DEBUG = False
+
+  nickname = 'Mutiny_%d' % random.randint(0, 1000)
+  fullname = "Mutiny: Pirate Meeting Gateway"
+
   def __init__(self):
-    self.nickname = None
-    self.channels = None
     self.partial = ''
     self.uid = GetUID()
 
-  def set_nickname(self, nickname):
+  def irc_nickname(self, nickname):
     self.nickname = nickname.lower()
     return self
 
-  def set_channels(self, channels):
+  def irc_fullname(self, fullname):
+    self.fullname = fullname
+    return self
+
+  def irc_channels(self, channels):
     self.channels = channels
     return self
 
-  def process_connect(self, write_cb):
+  def process_connect(self, write_cb, fullname=None):
     """Process a new connection."""
-    write_cb('NICK %s\nUSER mutiny x x :Mutiny\n' % (self.nickname))
+    write_cb(('NICK %s\nUSER mutiny x x :%s\n'
+              ) % (self.nickname, fullname or self.fullname))
 
   def process_data(self, data, write_cb):
     """Process data, presumably from a server."""

@@ -50,13 +50,6 @@ class Mutiny(IrcBot):
     self.log_path = config['log_path']
     self.config = config
     self.listen_on = ('localhost', 4950)  # 99 bottles of beer on the wall!
-
-    self.select_loop = SelectLoop()
-    self.select_loop.DEBUG = self.config.get('debug', False)
-
-    IrcBot.__init__(self)
-    self.set_nickname(nickname).set_channels(channels)
-
     if ':' in server:
       self.proto, server = server.split(':', 1)
     else:
@@ -65,6 +58,12 @@ class Mutiny(IrcBot):
       self.server, self.port = server.strip('/').rsplit(':', 1)
     else:
       self.server, self.port = server.strip('/'), 6667
+
+    IrcBot.__init__(self)
+    self.irc_nickname(nickname).irc_channels(channels)
+
+    self.select_loop = SelectLoop()
+    self.DEBUG = self.select_loop.DEBUG = self.config.get('debug', False)
 
   def start(self):
     if not os.path.exists(self.log_path):
