@@ -22,7 +22,7 @@
 ################################################################################
 #
 # Python standard
-import hashlib
+import traceback
 # Stuff from PageKite
 import sockschain
 import HttpdLite
@@ -42,13 +42,8 @@ def html_escape(text):
   """Produce entities within text."""
   return "".join(html_escape_table.get(c,c) for c in text)
 
-def sha1sig(parts):
-  h = hashlib.sha1()
-  h.update(('-'.join(parts)).encode('utf-8'))
-  return h.digest().encode('base64').replace('+', '^').replace('=', '').strip()
 
-
-class Mutiny:
+class Mutiny(IrcBot):
   """The main Mutiny class."""
 
   def __init__(self, config, nickname, server, channels):
@@ -58,7 +53,9 @@ class Mutiny:
 
     self.select_loop = SelectLoop()
     self.select_loop.DEBUG = self.config.get('debug', False)
-    self.bot = IrcBot().set_nickname(nickname).set_channels(channels)
+
+    IrcBot.__init__(self)
+    self.set_nickname(nickname).set_channels(channels)
 
     if ':' in server:
       self.proto, server = server.split(':', 1)
@@ -84,8 +81,8 @@ class Mutiny:
 
   def connected(self, socket):
     print 'Connected to %s://%s:%s/' % (self.proto, self.server, self.port)
-    self.bot.process_connect(lambda d: self.select_loop.sendall(socket, d))
-    self.select_loop.add(socket, self.bot)
+    self.process_connect(lambda d: self.select_loop.sendall(socket, d))
+    self.select_loop.add(socket, self)
     self.select_loop.start()
 
   def handleHttpRequest(self, req, scheme, netloc, path,
