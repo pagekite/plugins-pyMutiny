@@ -168,6 +168,8 @@ class IrcClient:
               ':Sorry, my client does not support private messages.\r\n'
               ) % fromnick)
 
+  def on_privmsg_channel(self, parts, write_cb): """Messages to channels."""
+
 
 class IrcLogger(IrcClient):
   """This client logs what he sees."""
@@ -178,6 +180,7 @@ class IrcLogger(IrcClient):
     IrcClient.__init__(self)
     self.logs = {}
     self.want_whois = []
+    self.whois_data = {}
     self.watchers = {}
 
   def irc_channel_log(self, channel):
@@ -217,19 +220,51 @@ class IrcLogger(IrcClient):
     except ValueError:
       pass
 
+  def irc_whois_info(self, nick):
+    if nick not in self.whois_data:
+      self.whois_data[nick] = {'event': 'whois', 'nick': nick}
+    return self.whois_data[nick]
+
   def on_353(self, parts, write_cb):
     """We want more info about anyone listed in /NAMES."""
-    self.want_whois.extend(parts[5].split())
+    self.want_whois.extend(parts[5].replace('@', '')
+                                   .replace('+', '').split())
 
   def on_366(self, parts, write_cb):
     """On end of /NAMES, run /WHOIS for interesting peoples."""
     if self.want_whois:
       self.irc_whois(self.want_whois.pop(0), write_cb)
 
+  def on_311(self, parts, write_cb):
+    self.irc_whois_info(parts[3]).update({
+      'userhost': '@'.join(parts[4:6]),
+      'userinfo': parts[7],
+    })
+
+  def on_378(self, parts, write_cb):
+    self.irc_whois_info(parts[3]).update({
+      'realhost': parts[4]
+    })
+
+  def on_319(self, parts, write_cb):
+    self.irc_whois_info(parts[3]).update({
+      'channels': parts[4].replace('@', '').replace('+', '').split(),
+      'chan_ops': [c.replace('@', '') for c in parts[4].split() if c[0] == '@'],
+      'chan_vops': [c.replace('+', '') for c in parts[4].split() if c[0] == '+']
+    })
+
   def on_318(self, parts, write_cb):
     """On end of /WHOIS, run /WHOIS for interesting peoples."""
+    info = self.irc_whois_info(parts[3])
+    print 'WHOIS: %s' % info
+    for channel in info.get('channels', []):
+      if channel in self.channels:
+        self.irc_channel_log_append(channel, [get_timed_uid(), info])
+    del self.whois_data[parts[3]]
+
     if self.want_whois:
       self.irc_whois(self.want_whois.pop(0), write_cb)
+    IrcClient.on_318(self, parts, write_cb)
 
   def on_join(self, parts, write_cb):
     nickname = parts[0].split('!')[0]
@@ -238,7 +273,13 @@ class IrcLogger(IrcClient):
       'nick': nickname
     }])
     self.irc_whois(nickname, write_cb)
-    IrcClient.on_join(self, parts, write_cb)
+
+  def on_part(self, parts, write_cb):
+    nickname = parts[0].split('!')[0]
+    self.irc_channel_log_append(parts[2], [get_timed_uid(), {
+      'event': 'part',
+      'nick': nickname
+    }])
 
   def on_privmsg_channel(self, parts, write_cb):
     nickname = parts[0].split('!')[0]
@@ -248,7 +289,6 @@ class IrcLogger(IrcClient):
       'nick': nickname,
       'text': text
     }])
-    IrcClient.on_privmsg_channel(self, parts, write_cb)
 
 
 class IrcBot(IrcLogger):

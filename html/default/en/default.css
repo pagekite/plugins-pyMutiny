@@ -8,6 +8,7 @@ h1, h2, h3, h4 {
 }
 #channel, #input, #people, #me {
   padding: 0px; margin: 5px 10px 20px 10px; border: 1px solid #404;
+  color: #000;
   background: #404;
   max-height: 400px;
   overflow: auto;
@@ -28,7 +29,7 @@ h1, h2, h3, h4 {
 }
 #recording {
   padding: 0px;
-          margin: -15px 10px 20px 10px;
+  margin: -15px 10px 20px 10px;
   text-align: center;
 }
 #recording .rec {
@@ -61,7 +62,6 @@ h1, h2, h3, h4 {
   padding: 2px 2px 2px 40px;
   margin: 2px;
   min-height: 32px;
-  opacity: 0.9;
 }
 .comment img, .action img, .person img {
   margin-left: -38px;
