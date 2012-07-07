@@ -6,7 +6,7 @@ body {
 h1, h2, h3, h4 {
   margin: 0 0 5px 5px;
 }
-#meeting, #input, #people, #me {
+#channel, #input, #people, #me {
   padding: 0px; margin: 5px 10px 20px 10px; border: 1px solid #404;
   background: #404;
   max-height: 400px;
@@ -55,7 +55,7 @@ h1, h2, h3, h4 {
 #settings input {
   margin-left: 20px;
 }
-.comment, .person {
+.comment, .action, .person {
   border: 1px solid #77f;
   background: #dde;
   padding: 2px 2px 2px 40px;
@@ -63,7 +63,7 @@ h1, h2, h3, h4 {
   min-height: 32px;
   opacity: 0.9;
 }
-.comment img, .person img {
+.comment img, .action img, .person img {
   margin-left: -38px;
   max-width: 32px;
   float: left;
@@ -73,7 +73,7 @@ h1, h2, h3, h4 {
   font-weight: bold;
   margin: 0 2px 0 0;
 }
-.comment .time {
+.comment .time, .action .time {
   float: right;
   margin: 0 0 10px 10px;
   font-size: 0.8em;

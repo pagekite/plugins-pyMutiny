@@ -9,13 +9,14 @@
  <script language='javascript'>
    var mutiny_network = '%(network)s';
    var mutiny_channel = '%(channel)s';
+   var mutiny_host = '';
    var mutiny_uid = ''; /* '_FIXME_(uid)s'; */
  </script>
-</head><body onLoad="mutiny.Main();">
+</head><body onLoad="mutiny.main();">
 
  <div id='main'>
   <h1>%(channel)s</h1>
-  <div id='meeting'>
+  <div id='channel'>
   </div>
   <div id='input'>
    <input class=privmsg type=text name='privmsg'
@@ -47,19 +48,27 @@
 
  <!-- Templates used by JavaScript --><div style='display: none;'>
   <div id='template-join'>
-   <p class='join' style='background: #_COLOR_'>
+   <p class='join' mutiny_style=''>
     <tt class=time>_HH_MM_</tt>
-    <img alt='' src='_AVATAR_'>
+    <img alt='' mutiny_avatar=''>
     <b class=name>_NICK_</b> joined
    </p>
   </div>
 
-  <div id='template-comment'>
-   <p class='comment' style='background: #_COLOR_'>
+  <div id='template-msg'>
+   <p class='comment' mutiny_style=''>
     <tt class=time>_HH_MM_</tt>
-    <img alt='' src='_AVATAR_'>
+    <img alt='' mutiny_avatar=''>
     <b class=name>_NICK_:</b>
     _TEXT_
+   </p>
+  </div>
+
+  <div id='template-act'>
+   <p class='action' mutiny_style=''>
+    <tt class=time>_HH_MM_</tt>
+    <img alt='' mutiny_avatar=''>
+    <i><b class=name>_NICK_</b> _TEXT_</i>
    </p>
   </div>
 
@@ -72,16 +81,16 @@
   </div>
 
   <div id='template-part'>
-   <p class='part' style='background: #_COLOR_'>
+   <p class='part' mutiny_style=''>
     <tt class=time>_HH_MM_</tt>
-    <img alt='' src='_AVATAR_'>
+    <img alt='' mutiny_avatar=''>
     <b class=name>_NICK_</b> left
    </p>
   </div>
 
   <div id='template-person'>
-   <p class='person' style='background: #_COLOR_'>
-    <img alt='' src='_AVATAR_'>
+   <p class='person' mutiny_style=''>
+    <img alt='' mutiny_avatar=''>
     <b class=name>_NICK_</b> _INFO_
    </p>
   </div>
