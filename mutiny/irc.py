@@ -177,6 +177,7 @@ class IrcLogger(IrcClient):
     IrcClient.__init__(self)
     self.logs = {}
     self.want_whois = []
+    self.watchers = {}
 
   def irc_channel_log(self, channel):
     if channel not in self.channels:
@@ -187,6 +188,25 @@ class IrcLogger(IrcClient):
       while len(self.logs[channel]) > self.MAXLINES:
         self.logs[channel].pop(0)
     return self.logs[channel]
+
+  def irc_watch_channel(self, channel, watcher):
+    if channel not in self.watchers:
+      self.watchers[channel] = [watcher]
+    else:
+      self.watchers[channel].append(watcher)
+
+  def irc_notify_watchers(self, channel):
+    watchers, self.watchers[channel] = self.watchers.get(channel, []), []
+    now = time.time()
+    for expire, cond, info in watchers:
+      if now <= expire:
+        cond.acquire()
+        cond.notify()
+        cond.release()
+
+  def irc_channel_log_append(self, channel, data):
+    self.irc_channel_log(channel).append(data)
+    self.irc_notify_watchers(channel)
 
   def irc_whois(self, nick, write_cb):
     write_cb('WHOIS %s\n' % nick)
@@ -212,7 +232,7 @@ class IrcLogger(IrcClient):
 
   def on_join(self, parts, write_cb):
     nickname = parts[0].split('!')[0]
-    self.irc_channel_log(parts[2]).append([get_timed_uid(), {
+    self.irc_channel_log_append(parts[2], [get_timed_uid(), {
       'event': 'join',
       'nick': nickname
     }])
@@ -222,7 +242,7 @@ class IrcLogger(IrcClient):
   def on_privmsg_channel(self, parts, write_cb):
     nickname = parts[0].split('!')[0]
     msg_type, text = self.irc_decode_message(parts[3])
-    self.irc_channel_log(parts[2]).append([get_timed_uid(), {
+    self.irc_channel_log_append(parts[2], [get_timed_uid(), {
       'event': msg_type,
       'nick': nickname,
       'text': text

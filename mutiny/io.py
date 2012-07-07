@@ -26,6 +26,7 @@ import errno
 import select
 import socket
 import threading
+import time
 # Stuff from PageKite
 import sockschain
 from sockschain import SSL
@@ -43,12 +44,33 @@ class SelectLoop(threading.Thread):
     threading.Thread.__init__(self)
     self.keep_running = True
     self.connections = {}
+    self.sleepers = []
 
   def stop(self):
     self.keep_running = False
 
   def add(self, fd, owner):
     self.connections[fd] = owner
+
+  def add_sleeper(self, waketime, condition, info):
+    ev = (waketime, condition, info)
+    self.sleepers.append(ev)
+    self.sleepers.sort()
+    return ev
+
+  def remove_sleeper(self, ev):
+    try:
+      self.sleepers.remove(ev)
+    except ValueError:
+      pass
+
+  def awaken_sleeper(self, ev):
+    wt, cond, info = ev
+    cond.acquire()
+    cond.notify()
+    if self.DEBUG:
+      print '-*- Woke up: %s' % info
+    cond.release()
 
   def sendall(self, fd, data):
     try:
@@ -84,10 +106,19 @@ class SelectLoop(threading.Thread):
             del self.connections[fd]
         except (SSL.Error, SSL.ZeroReturnError, SSL.SysCallError):
           del self.connections[fd]
+
       if ready:
         d = 0.1
       else:
         d = min(1, d+0.1)
+
+      if self.sleepers:
+        now = time.time()
+        try:
+          while self.sleepers and self.sleepers[0][0] <= now:
+            self.awaken_sleeper(self.sleepers.pop(0))
+        except IndexError:
+          pass
 
 
 class Connect(threading.Thread):

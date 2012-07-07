@@ -27,6 +27,8 @@ VERSION = 'v0.1'
 import json
 import os
 import sys
+import threading
+import time
 import traceback
 import urllib
 import zlib
@@ -197,11 +199,35 @@ class Mutiny(IrcBot):
 
   def api_log(self, network, channel, qs, posted, cookies):
     # FIXME: Choose between bots based on network
-    # FIXME: Filter output by time
+
     if not channel[0] in ('!', '&'):
       channel = '#' + channel
 
-    return 'application/json', json.dumps(self.irc_channel_log(channel))
+    grep = qs.get('grep', '')[0]
+    after = qs.get('seen', [None])[0]
+    timeout = int(qs.get('timeout', [0])[0])
+    if timeout:
+      timeout += time.time()
+
+    data = None
+    while not data:
+      data = self.irc_channel_log(channel)
+      if after or grep:
+        data = [x for x in data if (x[0] > after) and
+                                   (not grep or
+                                    grep in x[1]['nick'].lower() or
+                                    grep in x[1].get('text', ''))]
+      if timeout and not data:
+        cond = threading.Condition()
+        ev = self.select_loop.add_sleeper(timeout, cond, 'API request')
+        self.irc_watch_channel(channel, ev)
+        cond.acquire()
+        cond.wait()
+        cond.release()
+      if time.time() >= timeout:
+        break
+
+    return 'application/json', json.dumps(data)
 
 
 if __name__ == "__main__":
