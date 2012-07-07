@@ -203,7 +203,8 @@ class Mutiny(IrcBot):
     if not channel[0] in ('!', '&'):
       channel = '#' + channel
 
-    grep = qs.get('grep', '')[0]
+    grep = qs.get('grep', [''])[0]
+    limit = qs.get('limit', [0])[0]
     after = qs.get('seen', [None])[0]
     timeout = int(qs.get('timeout', [0])[0])
     if timeout:
@@ -224,8 +225,12 @@ class Mutiny(IrcBot):
         cond.acquire()
         cond.wait()
         cond.release()
+        self.select_loop.remove_sleeper(ev)
       if time.time() >= timeout:
         break
+
+    if limit:
+      data = data[-limit:]
 
     return 'application/json', json.dumps(data)
 
