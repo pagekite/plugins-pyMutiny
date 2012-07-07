@@ -32,6 +32,10 @@ import sockschain
 from sockschain import SSL
 
 
+class SelectAborted(Exception):
+  pass
+
+
 class SelectLoop(threading.Thread):
   """This class implements a select loop in a thread of its own."""
 
@@ -48,11 +52,15 @@ class SelectLoop(threading.Thread):
 
   def stop(self):
     self.keep_running = False
+    for sleeper in self.sleepers:
+      self.awaken_sleeper(sleeper)
 
   def add(self, fd, owner):
     self.connections[fd] = owner
 
   def add_sleeper(self, waketime, condition, info):
+    if not self.keep_running:
+      raise SelectAborted()
     ev = (waketime, condition, info)
     self.sleepers.append(ev)
     self.sleepers.sort()

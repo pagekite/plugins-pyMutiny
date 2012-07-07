@@ -36,7 +36,7 @@ import zlib
 import sockschain
 import HttpdLite
 # Stuff from Mutiny
-from mutiny.io import SelectLoop, Connect
+from mutiny.io import SelectLoop, SelectAborted, Connect
 from mutiny.irc import IrcClient, IrcBot
 
 
@@ -218,24 +218,27 @@ class Mutiny(IrcBot):
     if timeout:
       timeout += time.time()
 
-    data = None
-    while not data:
-      data = self.irc_channel_log(channel)
-      if after or grep:
-        data = [x for x in data if (x[0] > after) and
-                                   (not grep or
-                                    grep in x[1]['nick'].lower() or
-                                    grep in x[1].get('text', ''))]
-      if timeout and not data:
-        cond = threading.Condition()
-        ev = self.select_loop.add_sleeper(timeout, cond, 'API request')
-        self.irc_watch_channel(channel, ev)
-        cond.acquire()
-        cond.wait()
-        cond.release()
-        self.select_loop.remove_sleeper(ev)
-      if time.time() >= timeout:
-        break
+    data = []
+    try:
+      while not data:
+        data = self.irc_channel_log(channel)
+        if after or grep:
+          data = [x for x in data if (x[0] > after) and
+                                     (not grep or
+                                      grep in x[1]['nick'].lower() or
+                                      grep in x[1].get('text', ''))]
+        if timeout and not data:
+          cond = threading.Condition()
+          ev = self.select_loop.add_sleeper(timeout, cond, 'API request')
+          self.irc_watch_channel(channel, ev)
+          cond.acquire()
+          cond.wait()
+          cond.release()
+          self.select_loop.remove_sleeper(ev)
+        if time.time() >= timeout:
+          break
+    except SelectAborted:
+      pass
 
     if limit:
       data = data[-limit:]

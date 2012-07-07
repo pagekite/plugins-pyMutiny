@@ -256,12 +256,10 @@ class IrcLogger(IrcClient):
   def on_318(self, parts, write_cb):
     """On end of /WHOIS, run /WHOIS for interesting peoples."""
     info = self.irc_whois_info(parts[3])
-    print 'WHOIS: %s' % info
     for channel in info.get('channels', []):
       if channel in self.channels:
         self.irc_channel_log_append(channel, [get_timed_uid(), info])
     del self.whois_data[parts[3]]
-
     if self.want_whois:
       self.irc_whois(self.want_whois.pop(0), write_cb)
     IrcClient.on_318(self, parts, write_cb)
