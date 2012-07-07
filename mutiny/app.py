@@ -117,23 +117,13 @@ class Mutiny(IrcBot):
           tried.append(fp)
           if os.path.exists(fp):
             fd = open(fp, 'rb')
-            return open(fp).read(max_size).decode('utf-8')
+            return open(fp).read(max_size)
     raise NotFoundException('Not found: %s, tried: %s' % (name, tried))
 
   def fixup_channel(self, channel):
     if not channel[0] in ('!', '&'):
       channel = '#' + channel
     return channel
-
-  def gzipReply(self, data, headers, req):
-    # FIXME:
-    #if ((req.header('Accept', '') == '*/*') or
-    #    ('gzip' in req.header('Accept-Encoding').lower())):
-    #  data = zlib.compress(data, 16+zlib.MAX_WBITS)
-    #  headers.extend([
-    #    ('Content-Encoding', 'gzip')
-    #  ])
-    return data
 
   def handleHttpRequest(self, req, scheme, netloc, path,
                               params, query, frag,
@@ -182,6 +172,8 @@ class Mutiny(IrcBot):
               path in ('favicon.ico', )):
           template = self.load_template(path.split('/')[-1], config=page)
           mime_type = HttpdLite.GuessMimeType(path)
+          if mime_type != 'application/octet-stream' and path.endswith('.gz'):
+            headers.append(('Content-Encoding', 'gzip'))
         elif path == 'robots.txt':
           # FIXME: Have an explicit search-engine policy in settings
           raise NotFoundException('FIXME')
@@ -192,11 +184,11 @@ class Mutiny(IrcBot):
 
     if not data:
       if '__Mutiny_Template__' in template:
-        data = (template % page).encode('utf-8')
+        data = (template.decode('utf-8') % page).encode('utf-8')
         cachectrl = 'no-cache'
       else:
-        data = template.encode('utf-8')
-    return req.sendResponse(self.gzipReply(data, headers, req),
+        data = template
+    return req.sendResponse(data,
                             code=code, mimetype=mime_type,
                             header_list=headers, cachectrl=cachectrl)
 
@@ -211,7 +203,7 @@ class Mutiny(IrcBot):
     headers = self.CORS_HEADERS[:]
     mime_type, data = getattr(self, 'api_%s' % qs['a'][0]
                               )(network, channel, qs, posted, cookies)
-    return req.sendResponse(self.gzipReply(data, headers, req),
+    return req.sendResponse(data,
                             mimetype=mime_type,
                             header_list=headers, cachectrl='no-cache')
 
