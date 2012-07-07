@@ -24,8 +24,12 @@ VERSION = 'v0.1'
 ################################################################################
 #
 # Python standard
+import json
+import os
 import sys
 import traceback
+import urllib
+import zlib
 # Stuff from PageKite
 import sockschain
 import HttpdLite
@@ -33,6 +37,9 @@ import HttpdLite
 from mutiny.io import SelectLoop, Connect
 from mutiny.irc import IrcClient, IrcBot
 
+
+DEFAULT_PATH = os.path.expanduser('~/.mutiny')
+DEFAULT_PATH_HTML = os.path.join(DEFAULT_PATH, 'html')
 
 html_escape_table = {
   "&": "&amp;",
@@ -44,6 +51,11 @@ html_escape_table = {
 def html_escape(text):
   """Produce entities within text."""
   return "".join(html_escape_table.get(c,c) for c in text)
+
+
+class NotFoundException(Exception):
+  """Thrown when we want to render a 404."""
+  pass
 
 
 class Mutiny(IrcBot):
@@ -87,6 +99,35 @@ class Mutiny(IrcBot):
     self.select_loop.add(socket, self)
     self.select_loop.start()
 
+  def load_template(self, name, config={}, max_size=102400):
+    sv = {}
+    for setting, default in [('lang', 'en'),
+                             ('skin', 'default'),
+                             ('templates', '.SELF/html')]:
+      sv[setting] = [config.get(setting, self.config.get(setting, default))]
+      if default not in sv[setting]:
+        sv[setting].append(default)
+    tried = []
+    for path in sv['templates']:
+      for skin in sv['skin']:
+        for lang in sv['lang']:
+          fp = os.path.join(path, os.path.join(skin, os.path.join(lang, name)))
+          tried.append(fp)
+          if os.path.exists(fp):
+            fd = open(fp, 'rb')
+            return open(fp).read(max_size).decode('utf-8')
+    raise NotFoundException('Not found: %s, tried: %s' % (name, tried))
+
+  def gzipReply(self, data, headers, req):
+    # FIXME:
+    #if ((req.header('Accept', '') == '*/*') or
+    #    ('gzip' in req.header('Accept-Encoding').lower())):
+    #  data = zlib.compress(data, 16+zlib.MAX_WBITS)
+    #  headers.extend([
+    #    ('Content-Encoding', 'gzip')
+    #  ])
+    return data
+
   def handleHttpRequest(self, req, scheme, netloc, path,
                               params, query, frag,
                               qs, posted, cookies, user=None):
@@ -94,48 +135,73 @@ class Mutiny(IrcBot):
     path_url = path
     path = urllib.unquote(path).decode('utf-8')
 
-    # Defaults, may be overridden by individual response pages
+    # Defaults, will probably be overridden by individual response pages
+    headers = []
+    cachectrl = 'max-age=3600, public'
+    mime_type = 'text/html'
     code = 200
-    headers = self.CORS_HEADERS[:]
-    cachectrl = 'no-cache'
     data = None
 
     # Shared values for rendering templates
-    host = req.header('Host', 'unknown')
+    host = req.header('Host', 'unknown').lower()
     page = {
-      'proto': 'https', # FIXME
+      'templates': DEFAULT_PATH_HTML,
+      'skin': host,
       'host': host,
     }
-    page['unhosted_url'] = '%(proto)s://%(host)s' % page
-    # host meta
-    if req.command == 'GET' and path == '.well-known/host-meta':
-      mime_type = 'application/xrd+xml'
-      template = self.HOST_META
 
-    elif req.command == 'GET' and path == 'webfinger':
-      # FIXME: Does user really exist?
-      page['subject'] = subject = qs['uri'][0]
-      page['user'] = subject.split(':', 1)[-1].replace('@'+host, '')
-      mime_type = 'application/xrd+xml'
-      template = self.WEBFINGER.replace('\n', '\r\n')
-
-    elif path == 'oauth':
-      return self.handleOAuth(req, page, qs, posted)
-
-    elif path.startswith('storage/'):
-      return self.handleStorage(req, path[8:], page, qs, posted)
-
-    else:
-      code = 404
-      mime_type = 'text/html'
-      template = '<h1>404 Not found</h1>\n'
+    # Get the actual content.
+    try:
+      if req.command == 'GET':
+        if path == '':
+          template = self.load_template('index.html', config=page)
+          page['linked_channel_list'] = ''
+        elif path.startswith('_api/v1/'):
+          return self.handleApiRequest(req, path, qs, posted, cookies)
+        elif (path.startswith('_skin/') or
+              path in ('favicon.ico', )):
+          template = self.load_template(path.split('/')[-1], config=page)
+          mime_type = HttpdLite.GuessMimeType(path)
+        elif path == 'robots.txt':
+          # FIXME: Have an explicit search-engine policy in settings
+          raise NotFoundException('FIXME')
+        else:
+          cachectrl, code, data = 'no-cache', 404, '<h1>404 Not found</h1>\n'
+    except NotFoundException:
+      cachectrl, code, data = 'no-cache', 404, '<h1>404 Not found</h1>\n'
 
     if not data:
-      for key in page.keys():
-        page['q_%s' % key] = urllib.quote(page[key])
-    return req.sendResponse(data or ((template % page).encode('utf-8')),
+      if '__Mutiny_Template__' in template:
+        data = (template % page).encode('utf-8')
+        cachectrl = 'no-cache'
+      else:
+        data = template.encode('utf-8')
+    return req.sendResponse(self.gzipReply(data, headers, req),
                             code=code, mimetype=mime_type,
                             header_list=headers, cachectrl=cachectrl)
+
+  CORS_HEADERS = [
+    ('Access-Control-Allow-Origin', '*'),
+    ('Access-Control-Allow-Methods', 'GET, POST'),
+    ('Access-Control-Allow-Headers', 'content-length, authorization')
+  ]
+
+  def handleApiRequest(self, req, path, qs, posted, cookies):
+    api, v1, network, channel = path.split('/')
+    headers = self.CORS_HEADERS[:]
+    mime_type, data = getattr(self, 'api_%s' % qs['a'][0]
+                              )(network, channel, qs, posted, cookies)
+    return req.sendResponse(self.gzipReply(data, headers, req),
+                            mimetype=mime_type,
+                            header_list=headers, cachectrl='no-cache')
+
+  def api_log(self, network, channel, qs, posted, cookies):
+    # FIXME: Choose between bots based on network
+    # FIXME: Filter output by time
+    if not channel[0] in ('!', '&'):
+      channel = '#' + channel
+
+    return 'application/json', json.dumps(self.irc_channel_log(channel))
 
 
 if __name__ == "__main__":
@@ -145,10 +211,11 @@ if __name__ == "__main__":
       sys.exit(0)
 
     config = {
-      'log_path': os.path.expanduser('~/.Mutiny'),
+      'log_path': DEFAULT_PATH,
       'lang': 'en',
-      # These are ignored, but picked up by sockschain
+      'skin': 'default',
       'debug': False,
+      # These are ignored, but picked up by sockschain
       'nossl': None,
       'nopyopenssl': None,
     }

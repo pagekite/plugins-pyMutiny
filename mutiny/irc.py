@@ -25,14 +25,23 @@
 import random
 import socket
 import threading
+import time
 import traceback
 
 
 COUNTER, COUNTER_LOCK = 0, threading.Lock()
-def GetUID():
+def get_unique_id():
   global COUNTER, COUNTER_LOCK
   COUNTER_LOCK.acquire()
-  uid = '%x.%x' % (random.randint(0, 0x7fffffff), COUNTER)
+  uid = '%x-%x' % (random.randint(0, 0x7fffffff), COUNTER)
+  COUNTER += 1
+  COUNTER_LOCK.release()
+  return uid
+
+def get_timed_uid():
+  global COUNTER, COUNTER_LOCK
+  COUNTER_LOCK.acquire()
+  uid = '%d-%x' % (time.time(), COUNTER)
   COUNTER += 1
   COUNTER_LOCK.release()
   return uid
@@ -48,7 +57,7 @@ class IrcClient:
 
   def __init__(self):
     self.partial = ''
-    self.uid = GetUID()
+    self.uid = get_unique_id()
 
   def irc_nickname(self, nickname):
     self.nickname = nickname.lower()
@@ -94,6 +103,18 @@ class IrcClient:
       print '%s' % parts
       return None
 
+  ### Protocol helpers ###
+
+  def irc_decode_message(self, text, default='msg'):
+    message = text
+    if text[0] == '\x01' and text[-1] == '\x01':
+      if text.lower().startswith('\x01action '):
+        return 'act', text[8:-1]
+      else:
+        return 'ctcp', text[1:-1]
+    else:
+      return default, text
+
   ### Protocol callbacks follow ###
 
   def on_001(self, parts, write_cb):
@@ -110,6 +131,8 @@ class IrcClient:
   def on_255(self, parts, write_cb): """Clients and servers."""
   def on_265(self, parts, write_cb): """Local user stats, current/max."""
   def on_266(self, parts, write_cb): """Global user stats, current/max."""
+  def on_318(self, parts, write_cb): """End of /WHOIS list."""
+  def on_366(self, parts, write_cb): """End of /NAMES list."""
   def on_372(self, parts, write_cb): """MOTD line."""
   def on_375(self, parts, write_cb): """Start of MOTD."""
 
@@ -124,7 +147,9 @@ class IrcClient:
     print 'ERROR: %s' % parts
     write_cb('QUIT\n')
 
-  def on_notice(self, parts, write_cb): pass
+  def on_join(self, parts, write_cb): """Nick JOINed."""
+  def on_notice(self, parts, write_cb): """Bots must ignore NOTICE messages."""
+  #def on_part(self, parts, write_cb): """Nick dePARTed."""
 
   def on_ping(self, parts, write_cb):
     write_cb('PONG %s\n' % parts[2])
@@ -151,6 +176,7 @@ class IrcLogger(IrcClient):
   def __init__(self):
     IrcClient.__init__(self)
     self.logs = {}
+    self.want_whois = []
 
   def irc_channel_log(self, channel):
     if channel not in self.channels:
@@ -162,13 +188,45 @@ class IrcLogger(IrcClient):
         self.logs[channel].pop(0)
     return self.logs[channel]
 
+  def irc_whois(self, nick, write_cb):
+    write_cb('WHOIS %s\n' % nick)
+    try:
+      while True:
+        self.want_whois.remove(nick)
+    except ValueError:
+      pass
+
+  def on_353(self, parts, write_cb):
+    """We want more info about anyone listed in /NAMES."""
+    self.want_whois.extend(parts[5].split())
+
+  def on_366(self, parts, write_cb):
+    """On end of /NAMES, run /WHOIS for interesting peoples."""
+    if self.want_whois:
+      self.irc_whois(self.want_whois.pop(0), write_cb)
+
+  def on_318(self, parts, write_cb):
+    """On end of /WHOIS, run /WHOIS for interesting peoples."""
+    if self.want_whois:
+      self.irc_whois(self.want_whois.pop(0), write_cb)
+
   def on_join(self, parts, write_cb):
-    self.irc_channel_log(parts[2]).append(parts)
-    write_cb('WHO %s\n' % parts[2])
+    nickname = parts[0].split('!')[0]
+    self.irc_channel_log(parts[2]).append([get_timed_uid(), {
+      'event': 'join',
+      'nick': nickname
+    }])
+    self.irc_whois(nickname, write_cb)
     IrcClient.on_join(self, parts, write_cb)
 
   def on_privmsg_channel(self, parts, write_cb):
-    self.irc_channel_log(parts[2]).append(parts)
+    nickname = parts[0].split('!')[0]
+    msg_type, text = self.irc_decode_message(parts[3])
+    self.irc_channel_log(parts[2]).append([get_timed_uid(), {
+      'event': msg_type,
+      'nick': nickname,
+      'text': text
+    }])
     IrcClient.on_privmsg_channel(self, parts, write_cb)
 
 

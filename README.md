@@ -3,8 +3,8 @@
 "Mutiny is what you get whan Pirates have Meetings."
 
 This is an HTTP server implementing a web-interface for a single IRC channel,
-geared towards accessibility and managing structured meetings.  It was written
-for the Icelandic pirate party.
+geared towards accessibility and managing structured meetings.  It is being
+written for the Icelandic pirate party.
 
 
 ## Getting started ##
@@ -23,6 +23,20 @@ You should now be able to see what is going on in the channel.
 ...
 
 
+## Themes and Translations ##
+
+Mutiny pulls all HTML templates and messages used by the bot from a some
+predictable locations, falling back to built-in defaults if nothing more
+interesting is found.
+
+The default location to look for templates, media, CSS etc. is:
+
+    ~/.mutiny/html/HOST/LANG/...
+
+Where HOST is the DNS host name of the web server and LANG is a language
+code.  Default values are `default` and `en`.
+
+
 ## Hacking ##
 
 The file `mutiny-XXX.py` is combination of `Mutiny` and the non-standard
@@ -38,6 +52,29 @@ The combined "binary" is generated using
 
 
 ## Bugs ##
+
+   * ...
+
+## Ideas ##
+
+A bunch of ideas by importance/feasibility:
+
+   * Auto-link URLs
+   * Filtered view
+   * Permanent logging
+   * Browsable stored logs
+   * Twitter / Facebook / BrowserID / Google /Gravatar authenticated sign in
+   * Election helper
+   * Nickserv support
+   * Invite-only or Authenticated-only channels
+   * Tagging/Starring comments in the web UI
+   * Search engine
+   * Banning users
+   * Channels as RSS / Atom / ActivityStreams?
+   * Embeddeable UI for use as blog commenting engine?
+   * Rebroadcast Twitter / ActivityStream feeds
+
+Done:
 
    * ...
 

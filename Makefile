@@ -1,5 +1,5 @@
 dist: mutiny/app.py mutiny/io.py mutiny/irc.py ../HttpdLite/HttpdLite.py
-	breeder --compress --header header.txt \
+	breeder --compress --header header.txt html \
                 ../../PySocksipyChain/sockschain \
                 ../HttpdLite/HttpdLite.py \
                 mutiny/__init__.py mutiny/io.py mutiny/irc.py mutiny/app.py \

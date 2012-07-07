@@ -1,0 +1,108 @@
+body {
+  font-family: Courier;
+  font-size: 13px;
+  color: #404;
+}
+h1, h2, h3, h4 {
+  margin: 0 0 5px 5px;
+}
+#meeting, #input, #people, #me {
+  padding: 0px; margin: 5px 10px 20px 10px; border: 1px solid #404;
+  background: #404;
+  max-height: 400px;
+  overflow: auto;
+  display: relative;
+}
+#input, #recording {
+  white-space: nowrap;
+  overflow: hidden;
+  margin-top: -20px;
+}
+#input .privmsg {
+  margin: 0;
+  width: 85%;
+}
+#input .send {
+  margin: 0;
+  width: 15%;
+}
+#recording {
+  padding: 0px;
+          margin: -15px 10px 20px 10px;
+  text-align: center;
+}
+#recording .rec {
+  display: inline-block;
+  margin: 4px 0 -4px 0;
+  width: 20px;
+  background: #f00;
+  color: #f00;
+  overflow: hidden;
+}
+#people {
+  height: 200px;
+}
+#main {
+  width: 70%;
+  float: left;
+  max-width: 700px;
+}
+#meta {
+  width: 29%; 
+  float: left;
+  max-width: 300px;
+}
+#settings input {
+  margin-left: 20px;
+}
+.comment, .person {
+  border: 1px solid #77f;
+  background: #dde;
+  padding: 2px 2px 2px 40px;
+  margin: 2px;
+  min-height: 32px;
+  opacity: 0.9;
+}
+.comment img, .person img {
+  margin-left: -38px;
+  max-width: 32px;
+  float: left;
+  opacity: 2.0;
+}
+.comment .name, .person .name {
+  font-weight: bold;
+  margin: 0 2px 0 0;
+}
+.comment .time {
+  float: right;
+  margin: 0 0 10px 10px;
+  font-size: 0.8em;
+}
+.person .name {
+  display: block;
+}
+.join, .part {
+  display: inline-block;
+  border: 1px solid #77f;
+  padding: 2px 4px;
+  margin: 2px;
+  min-height: 16px;
+  opacity: 0.6;
+}
+.join img, .join .time, .part img, .part .time {
+  display: none;
+}
+.part {
+  text-decoration: line-through;
+  opacity: 0.4;
+}
+.topic {
+  font-size: 15px;
+  text-align: center;
+  font-weight: bold;
+  color: #fff;
+}
+.topic .label {
+  font-size: 13px;
+  color: #aaa;
+}
