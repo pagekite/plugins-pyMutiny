@@ -208,8 +208,41 @@ class IrcLogger(IrcClient):
         cond.notify()
         cond.release()
 
+  def irc_log_merge(self, log, data):
+    if log:
+      log_id, log_info = log[-1]
+      new_id, new_info = data
+      delta = int(new_id.split('-')[0]) - int(log_id.split('-')[0])
+      if ((delta < 15) and
+          (log_info.get('nick', '') == new_info.get('nick', ''))):
+        # Repeated join/part messages just zero each-other out.
+        if ((new_info['event'] in ('join', 'part')) and
+            (log_info['event'] in ('join', 'part')) and
+            (new_info['event'] != log_info['event'])):
+          log.pop(-1)
+          new_info.update({
+            'event': 'delete',
+            'target': log_id
+          })
+          return [data]
+        # Subsequent messages from the person get merged into one event.
+        elif ((new_info['event'] == 'msg') and
+              (log_info['event'] == 'msg')):
+          if new_info['text'] != log_info['text']:
+            new_info['text'] =  '\n'.join([log_info['text'], new_info['text']])
+            return [[get_timed_uid(), {
+              'event': 'delete',
+              'target': log_id
+            }], data]
+          else:
+            # ... or squelched if they are repeating themselves.
+            return []
+    return [data]
+
   def irc_channel_log_append(self, channel, data):
-    self.irc_channel_log(channel).append(data)
+    log = self.irc_channel_log(channel)
+    for line in self.irc_log_merge(log, data):
+      log.append(line)
     self.irc_notify_watchers(channel)
 
   def irc_whois(self, nick, write_cb):
