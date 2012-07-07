@@ -120,6 +120,11 @@ class Mutiny(IrcBot):
             return open(fp).read(max_size).decode('utf-8')
     raise NotFoundException('Not found: %s, tried: %s' % (name, tried))
 
+  def fixup_channel(self, channel):
+    if not channel[0] in ('!', '&'):
+      channel = '#' + channel
+    return channel
+
   def gzipReply(self, data, headers, req):
     # FIXME:
     #if ((req.header('Accept', '') == '*/*') or
@@ -148,6 +153,7 @@ class Mutiny(IrcBot):
     host = req.header('Host', 'unknown').lower()
     page = {
       'templates': DEFAULT_PATH_HTML,
+      'version': VERSION,
       'skin': host,
       'host': host,
     }
@@ -157,9 +163,21 @@ class Mutiny(IrcBot):
       if req.command == 'GET':
         if path == '':
           template = self.load_template('index.html', config=page)
-          page['linked_channel_list'] = ''
+          page.update({
+            'linked_channel_list': ''
+          })
         elif path.startswith('_api/v1/'):
           return self.handleApiRequest(req, path, qs, posted, cookies)
+        elif path.startswith('join/'):
+          join, network, channel = path.split('/')
+          page.update({
+            'network': network,
+            'channel': self.fixup_channel(channel),
+            'log_status': 'off',
+            'log_not': 'not ',
+            'log_url': '/',
+          })
+          template = self.load_template('channel.html', config=page)
         elif (path.startswith('_skin/') or
               path in ('favicon.ico', )):
           template = self.load_template(path.split('/')[-1], config=page)
@@ -200,12 +218,10 @@ class Mutiny(IrcBot):
   def api_log(self, network, channel, qs, posted, cookies):
     # FIXME: Choose between bots based on network
 
-    if not channel[0] in ('!', '&'):
-      channel = '#' + channel
-
+    channel = self.fixup_channel(channel)
     grep = qs.get('grep', [''])[0]
-    limit = qs.get('limit', [0])[0]
     after = qs.get('seen', [None])[0]
+    limit = int(qs.get('limit', [0])[0])
     timeout = int(qs.get('timeout', [0])[0])
     if timeout:
       timeout += time.time()

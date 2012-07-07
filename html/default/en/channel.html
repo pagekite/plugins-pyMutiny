@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<!-- __Mutiny_Template__ ... beware the %% -->
+<html><head>
+ <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+ <link rel="stylesheet" media="screen, screen" href="/_skin/default.css" type="text/css">
+ <script language="javascript" src="/_skin/main.js"></script>
+ <title>%(channel)s (mutiny %(version)s)</title>
+</head><body>
+
+ <div id='main'>
+  <h1>%(channel)s</h1>
+  <div id='meeting'>
+  </div>
+  <div id='input'>
+   <input class=privmsg type=text name='privmsg'
+    ><input class=send type=submit value='Ahoy!'>
+  </div>
+  <div id='recording' class='logging-%(log_status)s'>
+   <b class=rec>REC</b>
+   <a href='%(log_url)s'>Conversation is %(log_not)s being recorded</a>.
+  </div>
+ </div>
+
+ <div id='meta'>
+   <h2>Your presence:</h2>
+   <div id='me'>
+   </div>
+
+   <h2>People:</h2>
+   <div id='people'>
+   </div>
+
+   <h2>Filters:</h2>
+   <div id='settings'>
+    <input type=radio name=filter value=all checked> Show everything<br>
+    <input type=radio name=filter value=talk> Discussions<br>
+    <input type=radio name=filter value=voice> Designated speakers<br>
+    <input type=radio name=filter value=notes> Meeting summary<br>
+   </div>
+ </div>
+
+ <!-- Templates used by JavaScript --><div style='display: none;'>
+  <div id='template-join'>
+   <p class='join' style='background: #_COLOR_'>
+    <tt class=time>_HH_MM_</tt>
+    <img alt='' src='_AVATAR_'>
+    <b class=name>_NICK_</b> joined
+   </p>
+  </div>
+
+  <div id='template-comment'>
+   <p class='comment' style='background: #_COLOR_'>
+    <tt class=time>_HH_MM_</tt>
+    <img alt='' src='_AVATAR_'>
+    <b class=name>_NICK_:</b>
+    _TEXT_
+   </p>
+  </div>
+
+  <div id='template-topic'>
+   <p class='topic'>
+    <span class='label'>Topic:</span>
+    _TEXT_
+    <span class='label'>(_NICK_)</span>
+   </p>
+  </div>
+
+  <div id='template-part'>
+   <p class='part' style='background: #_COLOR_'>
+    <tt class=time>_HH_MM_</tt>
+    <img alt='' src='_AVATAR_'>
+    <b class=name>_NICK_</b> left
+   </p>
+  </div>
+
+  <div id='template-person'>
+   <p class='person' style='background: #_COLOR_'>
+    <img alt='' src='_AVATAR_'>
+    <b class=name>_NICK_</b> _INFO_
+   </p>
+  </div>
+
+ </div><!-- End of JavaScript templates -->
+
+</body></html>
