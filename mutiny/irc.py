@@ -73,7 +73,7 @@ class IrcClient:
 
   def process_connect(self, write_cb, fullname=None):
     """Process a new connection."""
-    write_cb(('NICK %s\nUSER mutiny x x :%s\n'
+    write_cb(('NICK %s\r\nUSER mutiny x x :%s\r\n'
               ) % (self.nickname, fullname or self.fullname))
 
   def process_data(self, data, write_cb):
@@ -139,20 +139,20 @@ class IrcClient:
   def on_376(self, parts, write_cb):
     """End of MOTD."""
     if self.channels:
-      write_cb('JOIN %s\n' % '\nJOIN '.join(self.channels))
+      write_cb('JOIN %s\r\n' % '\r\nJOIN '.join(self.channels))
 
   def on_396(self, parts, write_cb): """Hidden host."""
 
   def on_error(self, parts, write_cb):
     print 'ERROR: %s' % parts
-    write_cb('QUIT\n')
+    write_cb('QUIT\r\n')
 
   def on_join(self, parts, write_cb): """Nick JOINed."""
   def on_notice(self, parts, write_cb): """Bots must ignore NOTICE messages."""
   #def on_part(self, parts, write_cb): """Nick dePARTed."""
 
   def on_ping(self, parts, write_cb):
-    write_cb('PONG %s\n' % parts[2])
+    write_cb('PONG %s\r\n' % parts[2])
 
   def on_privmsg(self, parts, write_cb):
     if parts[2].lower() == self.nickname:
@@ -164,7 +164,8 @@ class IrcClient:
 
   def on_privmsg_self(self, parts, write_cb):
     fromnick = parts[0].split('!', 1)[0]
-    write_cb(('NOTICE %s :Sorry, my client does not support private messages.\n'
+    write_cb(('NOTICE %s '
+              ':Sorry, my client does not support private messages.\r\n'
               ) % fromnick)
 
 
@@ -209,7 +210,7 @@ class IrcLogger(IrcClient):
     self.irc_notify_watchers(channel)
 
   def irc_whois(self, nick, write_cb):
-    write_cb('WHOIS %s\n' % nick)
+    write_cb('WHOIS %s\r\n' % nick)
     try:
       while True:
         self.want_whois.remove(nick)
@@ -270,7 +271,7 @@ class IrcBot(IrcLogger):
       return None
 
   def cmd_ping(self, fromnick, channel, parts, write_cb):
-    write_cb('NOTICE %s :pongalong!\n' % fromnick)
+    write_cb('NOTICE %s :pongalong!\r\n' % fromnick)
 
 
 if __name__ == "__main__":
