@@ -12,7 +12,7 @@ written for the Icelandic pirate party.
 Quick-start:
 
    1. Download [mutiny-v0.0.py](https://raw.github.com/pagekite/plugins-pyMutiny/master/bin/mutiny-v0.0.py)
-   2. In a console: `python ./mutiny-v0.0.py BOTNAME irc.server.net:#channel`
+   2. In a console: `python ./mutiny-v0.0.py BOTNAME "irc://irc.server.net:6667/#channel"`
    3. Open up `http://localhost:4950/` in your browser
 
 You should now be able to see what is going on in the channel.
