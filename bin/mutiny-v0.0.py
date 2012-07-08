@@ -70,18 +70,18 @@ Bdll9z/v9NAPCSsi4=
 
 ###############################################################################
 __FILES[".SELF/html/default/en/default.css"] = zlib.decompress(__b64d("""\
-eNqFVduSoyAQfc9XUJWat2ipcWay+rhfQgSVHQQKyWV2av99m5uXOJdKWQHsbk6fc8CzJO/oY4dQK4V
-JWjww/l6h3/KiGdV1XB/ZX1qh/KjudqmRXOoK7cusrHf/dn1+QH0BzxGe0hUbsO6YqFAGv2d1t4+N3O
-0HzISLuDFi+gq9Zk9uEy6xqRCnrald+j2ZAjKfux+owcvU4tcPqceYuts3PRaC8gPaM6EuBv4VlYpTG
-AzUFVWYECY6gAw5E36LPYcVVGRhVKOz1IRC+zmsjJIzEoiYecmyzE7PuHnrtLwIUk0hFl5PWdcD5NLj
-Q0heqYY2bhXCFyPtCmGj4hiE0JRjw67UMRCxa9oABkDr6eiZocmocAMSCXnTWK2L9owQKupJlsRIVaG
-kiMS6sihVml2HsVvrV898n56fluEjFeTL2Lz0sWukK44XmUn+Cc/w3tC7STBnHcQ0VBhryFXRFIau8s
-QXE5wJmpy5bN6WW5RQNkOJ+1vgLMJOK6laL19UM0y3fAIU7yIHIapaRNelRnZdeLngCLJGagzAH5Gnc
-g5IrIsjKqjQyGGAvg8oxY1hUsBAUT1Kf4Q+MeLra7tpB8DWS/ILS3N4ygclijAFKLGfY7EGg9jQTYDC
-JICCybaZ5HiKe8wns5iX1vtszrMEXzMDyhZptoKRCjzQeW83nS+yW6h6lpzUqwupcE54qGWYqxWaclN
-fy4PRtlj9cK/lS6subsksPdHBld9Am2wa/AkxfyRzsmJtZRasefve0NuNvjPCSvTyR63zl3AhRdKz9G
-VCGbR2Q0/YzuP1624Y12070Rt2ODM6NSakoJ4lG/ARjzuxhxtbGcADtnPTg5G7/gFWGU6YYs0sevhKP
-X99e3zhjumot+2ibsrxmfJN+YePIMbY5vwH6L08bw==
+eNqFVcmOozAQvecrLEV9CwgI3Z2B43yJgw142tiWcZae1vz7lDeW0IsihF2p5dV7ZXOW5B197BBqpTB
+JiwfG3yv0W140o7qO9pH9pRXKj+puTY3kUldoX2Zlvfu36/MD6gt4jvCULtmAdcdEhTL4Pau7faznbj
+9gJpzHjRHTV+g1e3JFuMSmQpy2pnbh92RyyHzsfqAGL0OLXz+EHmPobt/0WAjKD2jPhLoYeCsqFaewG
+KhLqjAhTHQAGWIm/BZ7DhZUZGFVo7PUhEL7OVhGyRkJRMy8ZFlmt2fcvHVaXgSpJhcLr6es6wFy6fEh
+JK9UQxu3CuGLkdZC2Kg4BiE05diwK3UMROyaNoAB0Ho6emZoMircgERC3jRW66Q9I4SKepIlMVJVKCk
+isS4tSpVm12Hs1vrVM9+n56el+0gF+dI3L73vGumK40Vkkn/CM/xv6N0kmLMOfBoqjB3IVdIUli7zxB
+cTnAmanLls3pYlSkibocS9FjiLUGklVevli2qG7ZZPgOKnyEGIqhZx6lIjuy78ueAIokZqDMAfkadyd
+kjsFEdUkKGRwwB9H1CKG8OkgIWiepT+CH0yiK+v7aYdAFsvyS8szeEpH5QowhagxH6OxRoMYkM3AQqb
+AAo222aS4ynWmE9mMZvWdTbnWcJcMwPKFmm2gpEKPNC5ttvOF9ktZD1LTurVhVS4SXjIZZjLFZpyW5/
+Lg9E2Wf1wr+XLUV3ckll6ooNLv4E2jWmYT/D5I5mTFWsrs2DN2/cDvS303SCsRC9/1Dp/CRdSJD1LXy
+aUQWu39ITtPF5vd8tot+3E2bDLmdGpMSEF9SxZh4943Ik93NjKADNgOzc9DHLXP8AqwwlTrIEa7o3wL
+H/4Xj1/fY98MSfToW/buQJKOT5Tvkn/8DnEGNuY/1ZuP4k=
 """))
 ###############################################################################
 __FILES[".SELF/html/default/en/avatar_7.jpg"] = zlib.decompress(__b64d("""\
@@ -1330,35 +1330,36 @@ ADOOfeg=
 
 ###############################################################################
 __FILES[".SELF/html/default/en/mutiny.js"] = zlib.decompress(__b64d("""\
-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
+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
 """))
 ###############################################################################
 __FILES[".SELF/html/default/en/avatar_b.jpg"] = zlib.decompress(__b64d("""\
@@ -2084,6 +2085,18 @@ class Mutiny(IrcBot):
       channel = '#' + channel
     return channel
 
+  def renderChannelList(self):
+    html = []
+    for channel in self.channels:
+      html.append(('<li><a href="/join/irc/%s">%s</a></li>'
+                   ) % (channel.replace('#', ''), channel))
+    if html:
+      html[0:0] = ['<ul class="channel_list">']
+      html.append('</ul>')
+    else:
+      html = ['<ul class="channel_list_empty"><i>No channels</i></ul>']
+    return ''.join(html)
+
   def handleHttpRequest(self, req, scheme, netloc, path,
                               params, query, frag,
                               qs, posted, cookies, user=None):
@@ -2113,7 +2126,7 @@ class Mutiny(IrcBot):
         if path == '':
           template = self.load_template('index.html', config=page)
           page.update({
-            'linked_channel_list': ''
+            'linked_channel_list': self.renderChannelList()
           })
         elif path.startswith('_api/v1/'):
           return self.handleApiRequest(req, path, qs, posted, cookies)
