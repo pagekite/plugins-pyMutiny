@@ -2,8 +2,10 @@ mutiny = {
   channel_log: [],
   seen: '0',
 
+  api_url: '',
   retry: 1,
   max_retry: 60,
+  refresh: 90,
 
   trim_log: function() {
     /* FIXME: If log has grown too long, play nice and delete some events. */
@@ -55,7 +57,7 @@ mutiny = {
 
   render: function(data) {
     /* Schedule refresh first, in case we crash and burn. */
-    setTimeout('mutiny.load_data(60);', 50);
+    setTimeout('mutiny.load_data('+mutiny.refresh+');', 50);
 
     for (idx in data) {
       mutiny.channel_log.push(data[idx]);
@@ -105,28 +107,33 @@ mutiny = {
   },
 
   load_data: function(timeout) {
-    var api_url = (mutiny_host+'/_api/v1/'+mutiny_network+'/'+mutiny_channel
-                   ).replace(/#/g, '');
-    $.getJSON(api_url, {
-      'a': 'log',
-      'uid': mutiny_uid,
-      'seen': mutiny.seen,
-      'timeout': timeout
-    }, function(data, textStatus, jqXHR) {
-      mutiny.retry = 1;
-      mutiny.render(data);
-      $('#disconnected').hide();
-    }).error(function() {
-      setTimeout('mutiny.load_data();', 1000 * mutiny.retry);
-      if (mutiny.retry > 2) {
-        for (var i = 1; i <= mutiny.retry; i++) {
-          setTimeout('$("#countdown").html('+i+');', 1000 * (mutiny.retry-i));
+    $.ajax({
+      url: mutiny.api_url,
+      timeout: (mutiny.refresh+2) * 1000,
+      dataType: 'json',
+      data: {
+        'a': 'log',
+        'uid': mutiny_uid,
+        'seen': mutiny.seen,
+        'timeout': timeout
+      },
+      success: function(data) {
+        mutiny.retry = 1;
+        mutiny.render(data);
+        $('#disconnected').hide();
+      },
+      error: function(jqXHR, status, errorThrown) {
+        setTimeout('mutiny.load_data(0);', 1000 * mutiny.retry);
+        if (mutiny.retry > 2) {
+          for (var i = 1; i <= mutiny.retry; i++) {
+            setTimeout('$("#countdown").html('+i+');', 1000 * (mutiny.retry-i));
+          }
+          $('#disconnected').show();
         }
-        $('#disconnected').show();
+        mutiny.retry = mutiny.retry * 2;
+        if (mutiny.retry > mutiny.max_retry)
+          mutiny_retry = mutiny.max_retry;
       }
-      mutiny.retry = mutiny.retry * 2;
-      if (mutiny.retry > mutiny.max_retry)
-        mutiny_retry = mutiny.max_retry;
     });
   },
 
@@ -155,8 +162,10 @@ mutiny = {
   },
 
   main: function() {
-    mutiny.load_data(0);
     $('p.toggle').click(mutiny.toggle_filter);
     $('input[name=filter]').click(mutiny.filter_all);
+    mutiny.api_url = (mutiny_host+'/_api/v1/'+mutiny_network+'/'+mutiny_channel
+                      ).replace(/#/g, '');
+    mutiny.load_data(0);
   }
 };
