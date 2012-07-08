@@ -11,8 +11,8 @@ written for the Icelandic pirate party.
 
 Quick-start:
 
-   1. Download [mutiny-v0.1.py](https://raw.github.com/pagekite/plugins-pyMutiny/master/bin/mutiny-v0.1.py)
-   2. In a console: `python ./mutiny-v0.1.py BOTNAME irc.server.net:#channel`
+   1. Download [mutiny-v0.0.py](https://raw.github.com/pagekite/plugins-pyMutiny/master/bin/mutiny-v0.0.py)
+   2. In a console: `python ./mutiny-v0.0.py BOTNAME irc.server.net:#channel`
    3. Open up `http://localhost:4950/` in your browser
 
 You should now be able to see what is going on in the channel.
@@ -59,7 +59,6 @@ The combined "binary" is generated using
 
 A bunch of ideas by importance/feasibility:
 
-   * Auto-link URLs
    * Filtered view
    * Permanent logging
    * Browsable stored logs
@@ -76,7 +75,7 @@ A bunch of ideas by importance/feasibility:
 
 Done:
 
-   * ...
+   * Auto-link URLs
 
 
 ## Credits ##
