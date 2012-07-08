@@ -67,6 +67,7 @@ A bunch of ideas by importance/feasibility:
    * Election helper
    * Permanent logging
    * Browsable stored logs
+   * Curation: Ways to extract and publish conversation fragments.
    * Nickserv support
    * Search engine
    * Channels as RSS / Atom / ActivityStreams?
