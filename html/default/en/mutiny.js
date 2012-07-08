@@ -6,6 +6,7 @@ mutiny = {
   retry: 1,
   max_retry: 60,
   refresh: 90,
+  running: 0,
 
   trim_log: function() {
     /* FIXME: If log has grown too long, play nice and delete some events. */
@@ -56,8 +57,10 @@ mutiny = {
   },
 
   render: function(data) {
-    /* Schedule refresh first, in case we crash and burn. */
-    setTimeout('mutiny.load_data('+mutiny.refresh+');', 50);
+    /* Schedule refresh first, in case we crash and burn.
+     * Introduce some jitter to spread load a bit. */
+    var refresh = Math.round((0.5 + Math.random()) * mutiny.refresh);
+    setTimeout('mutiny.load_data('+refresh+');', Math.random() * 100);
 
     for (idx in data) {
       mutiny.channel_log.push(data[idx]);
@@ -107,9 +110,11 @@ mutiny = {
   },
 
   load_data: function(timeout) {
+    if (mutiny.running > 0) return;
+    mutiny.running += 1;
     $.ajax({
       url: mutiny.api_url,
-      timeout: (mutiny.refresh+2) * 1000,
+      timeout: (timeout+10) * 1000,
       dataType: 'json',
       data: {
         'a': 'log',
@@ -118,11 +123,13 @@ mutiny = {
         'timeout': timeout
       },
       success: function(data) {
+        mutiny.running -= 1;
         mutiny.retry = 1;
         mutiny.render(data);
         $('#disconnected').hide();
       },
       error: function(jqXHR, status, errorThrown) {
+        mutiny.running -= 1;
         setTimeout('mutiny.load_data(0);', 1000 * mutiny.retry);
         if (mutiny.retry > 2) {
           for (var i = 1; i <= mutiny.retry; i++) {

@@ -40,7 +40,7 @@ h1, h2, h3, h4 {
   background: #404;
   max-height: 400px;
   overflow: auto;
-  display: relative;
+  position: relative;
 }
 #input, #recording {
   white-space: nowrap;
