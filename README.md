@@ -53,13 +53,14 @@ The combined "binary" is generated using
 
 ## Bugs ##
 
-   * ...
+   * Does not reconnect when disconnected
+   * The web UI sometimes stops refreshing
+
 
 ## Ideas ##
 
 A bunch of ideas by importance/feasibility:
 
-   * Filtered view
    * Permanent logging
    * Browsable stored logs
    * Twitter / Facebook / BrowserID / Google /Gravatar authenticated sign in
@@ -75,6 +76,7 @@ A bunch of ideas by importance/feasibility:
 
 Done:
 
+   * Filtered view
    * Auto-link URLs
 
 

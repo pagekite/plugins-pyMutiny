@@ -6,6 +6,18 @@ body {
 h1, h2, h3, h4 {
   margin: 0 0 5px 5px;
 }
+
+#main {
+  width: 70%;
+  float: left;
+  max-width: 700px;
+}
+#meta {
+  width: 29%;
+  float: left;
+  max-width: 300px;
+}
+
 #channel, #input, #people, #me {
   padding: 0px; margin: 5px 10px 20px 10px; border: 1px solid #404;
   color: #000;
@@ -43,15 +55,8 @@ h1, h2, h3, h4 {
 #people {
   height: 200px;
 }
-#main {
-  width: 70%;
-  float: left;
-  max-width: 700px;
-}
-#meta {
-  width: 29%;
-  float: left;
-  max-width: 300px;
+.toggle {
+  margin: 0;
 }
 #settings input {
   margin-left: 20px;

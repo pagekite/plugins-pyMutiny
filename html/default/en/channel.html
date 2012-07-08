@@ -13,25 +13,26 @@
    var mutiny_uid = ''; /* '_FIXME_(uid)s'; */
  </script>
 </head><body onLoad="mutiny.main();">
+ <noscript><h1 class='error'>SORRY!  This page requires JavaScript.</h1></noscript>
 
  <div id='main'>
   <h1>%(channel)s</h1>
   <div id='channel'>
   </div>
-  <div id='input'>
+  <!-- div id='input'>
    <input class=privmsg type=text name='privmsg'
     ><input class=send type=submit value='Ahoy!'>
-  </div>
-  <div id='recording' class='logging-%(log_status)s'>
+  </div -->
+  <!-- div id='recording' class='logging-%(log_status)s'>
    <b class=rec>REC</b>
    <a href='%(log_url)s'>Conversation is %(log_not)s being recorded</a>.
-  </div>
+  </div -->
  </div>
 
  <div id='meta'>
-   <h2>Your presence:</h2>
+   <!-- h2>Your presence:</h2>
    <div id='me'>
-   </div>
+   </div -->
 
    <h2>People:</h2>
    <div id='people'>
@@ -39,16 +40,22 @@
 
    <h2>Filters:</h2>
    <div id='settings'>
-    <input type=radio name=filter value=all checked> Show everything<br>
-    <input type=radio name=filter value=talk> Discussions<br>
-    <input type=radio name=filter value=voice> Designated speakers<br>
-    <input type=radio name=filter value=notes> Meeting summary<br>
+    <p class='toggle'><input type=radio name=filter value=all>
+                      Show everything</p>
+    <p class='toggle'><input type=radio name=filter value=talk checked>
+                      Discussions</p>
+    <p class='toggle'><input type=radio name=filter value=voice>
+                      Designated speakers</p>
+    <p class='toggle'><input type=radio name=filter value=notes>
+                      Meeting summary</p>
    </div>
  </div>
 
+
  <!-- Templates used by JavaScript --><div style='display: none;'>
+
   <div id='template-join'>
-   <p class='join' mutiny_style=''>
+   <p class='mutiny_log join _UID_ _STAT_' mutiny_style=''>
     <tt class=time>_HH_MM_</tt>
     <img alt='' mutiny_avatar=''>
     <b class=name>_NICK_</b> joined
@@ -56,7 +63,7 @@
   </div>
 
   <div id='template-msg'>
-   <p class='comment _UID_' mutiny_style=''>
+   <p class='mutiny_log comment _UID_' mutiny_style=''>
     <tt class=time>_HH_MM_</tt>
     <img alt='' mutiny_avatar=''>
     <b class=name>_NICK_:</b>
@@ -65,7 +72,7 @@
   </div>
 
   <div id='template-act'>
-   <p class='action _UID_' mutiny_style=''>
+   <p class='mutiny_log action _UID_ _STAT_' mutiny_style=''>
     <tt class=time>_HH_MM_</tt>
     <img alt='' mutiny_avatar=''>
     <i><b class=name>_NICK_</b> _TEXT_</i>
@@ -73,7 +80,7 @@
   </div>
 
   <div id='template-topic'>
-   <p class='topic _UID_'>
+   <p class='mutiny_log topic _UID_ _STAT_'>
     <span class='label'>Topic:</span>
     _TEXT_
     <span class='label'>(_NICK_)</span>
@@ -81,7 +88,7 @@
   </div>
 
   <div id='template-part'>
-   <p class='part _UID_' mutiny_style=''>
+   <p class='mutiny_log part _UID_ _STAT_' mutiny_style=''>
     <tt class=time>_HH_MM_</tt>
     <img alt='' mutiny_avatar=''>
     <b class=name>_NICK_</b> left
@@ -89,7 +96,7 @@
   </div>
 
   <div id='template-nick'>
-   <p class='nick _UID_' mutiny_style=''>
+   <p class='mutiny_log nick _UID_ _STAT_' mutiny_style=''>
     <tt class=time>_HH_MM_</tt>
     <img alt='' mutiny_avatar=''>
     <b class=name>_NICK_</b> is now <b class=name>_TEXT_</b>
@@ -97,12 +104,11 @@
   </div>
 
   <div id='template-whois'>
-   <p class='person' mutiny_style=''>
+   <p class='person _STAT_' mutiny_style=''>
     <img alt='' mutiny_avatar=''>
     <b class=name>_NICK_</b> _INFO_
    </p>
   </div>
 
  </div><!-- End of JavaScript templates -->
-
 </body></html>

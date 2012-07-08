@@ -82,8 +82,10 @@ mutiny = {
         } else {
           var td = document.getElementById(target);
           var scroll = (td.scrollHeight - td.scrollTop == mutiny.scroll_diff);
-          $('#'+target).append($(tpl).attr('id', dom_id));
+          var jqObj = $(tpl).attr('id', dom_id);
+          $('#'+target).append(jqObj);
           if (target == 'channel') {
+            mutiny.apply_filters(jqObj);
             if (scroll || !mutiny.scroll_diff) {
               td.scrollTop = td.scrollHeight;
               mutiny.scroll_diff = (td.scrollHeight - td.scrollTop);
@@ -109,7 +111,33 @@ mutiny = {
     });
   },
 
+  apply_filters: function(jqObj) {
+    var filter = $('input[name=filter]:checked').val();
+    $(jqObj).show();
+    if (filter == 'talk') {
+      $(jqObj).filter('.part').hide();
+      $(jqObj).filter('.join').hide();
+      $(jqObj).filter('.nick').hide();
+    }
+    else if (filter == 'voice') {
+      $(jqObj).filter(':not(.voice)').hide();
+    }
+    else if (filter == 'notes') {
+      $(jqObj).filter(':not(.notes)').hide();
+    }
+  },
+
+  filter_all: function() {
+    setTimeout("mutiny.apply_filters($('.mutiny_log'));", 10);
+  },
+
+  toggle_filter: function(e) {
+    $(e.target).children('input[name=filter]').click();
+  },
+
   main: function() {
     mutiny.load_data(0);
+    $('p.toggle').click(mutiny.toggle_filter);
+    $('input[name=filter]').click(mutiny.filter_all);
   }
 };
