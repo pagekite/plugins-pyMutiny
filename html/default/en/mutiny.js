@@ -30,10 +30,13 @@ mutiny = {
     var color = '#';
     var avatar = '/_skin/avatar_'+uid[uid.length-1]+'.jpg';
     var max = 'f'.charCodeAt(0);
-    for (var n in [0, 1, 2, 3, 4, 5]) {
-      var c = nick[n % nick.length];
-      color += String.fromCharCode(max - (c.charCodeAt(0) % 6));
-    }
+    if (nick)
+      for (var n in [0, 1, 2, 3, 4, 5]) {
+        var c = nick[n % nick.length];
+        color += String.fromCharCode(max - (c.charCodeAt(0) % 6));
+      }
+    else
+      color = '#aaa'
     return mutiny.render_text(/_NICK_/g, nick,
              template.replace(/mutiny_style=/g, 'style="background: '+color+';" x=')
                      .replace(/mutiny_avatar=/g, 'src="'+avatar+'" x='))
@@ -73,7 +76,7 @@ mutiny = {
       }
       else if (tpl) {
         tpl = mutiny.render_time(iid,
-                mutiny.render_nick(info.nick, info.uid,
+                mutiny.render_nick(info.nick || '', info.uid || '',
                   mutiny.render_text(/_UID_/g, info.uid,
                     mutiny.render_text(/_STAT_/g, info.stat,
                       mutiny.render_text(/_TEXT_/g, info.text, tpl)))));

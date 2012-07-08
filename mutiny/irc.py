@@ -137,6 +137,8 @@ class IrcClient:
   def on_265(self, parts, write_cb): """Local user stats, current/max."""
   def on_266(self, parts, write_cb): """Global user stats, current/max."""
   def on_318(self, parts, write_cb): """End of /WHOIS list."""
+  def on_332(self, parts, write_cb): """Channel topic."""
+  def on_333(self, parts, write_cb): """Channel topic setter."""
   def on_366(self, parts, write_cb): """End of /NAMES list."""
   def on_372(self, parts, write_cb): """MOTD line."""
   def on_375(self, parts, write_cb): """Start of MOTD."""
@@ -154,7 +156,7 @@ class IrcClient:
 
   def on_join(self, parts, write_cb): """User JOINed."""
   def on_notice(self, parts, write_cb): """Bots must ignore NOTICE messages."""
-# def on_part(self, parts, write_cb): """User dePARTed."""
+  def on_part(self, parts, write_cb): """User dePARTed."""
 
   def on_ping(self, parts, write_cb):
     write_cb('PONG %s\r\n' % parts[2])
@@ -304,6 +306,38 @@ class IrcLogger(IrcClient):
 
     if self.want_whois:
       self.irc_whois(self.want_whois.pop(0), write_cb)
+
+  def on_332(self, parts, write_cb):
+    """Channel topic."""
+    channel, topic = parts[3], parts[4]
+    info = {
+      'event': 'topic',
+      'text': topic,
+    }
+    log = self.irc_channel_log(channel);
+    if log:
+      last_id, last = log[-1]
+      if last.get('event') == 'topic' and not last.get('text'):
+        info.update(last)
+        info['update'] = last_id
+    self.irc_channel_log_append(channel, [get_timed_uid(), info])
+
+  def on_333(self, parts, write_cb):
+    """Channel topic metadata."""
+    channel, by_nuh, when = parts[3], parts[4], parts[5]
+    nickname, userhost = by_nuh.split('!', 1)
+    info = {
+      'event': 'topic',
+      'nick': nickname,
+      'uid': self.irc_cached_whois(nickname, userhost).get('uid')
+    }
+    log = self.irc_channel_log(channel);
+    if log:
+      last_id, last = log[-1]
+      if last.get('event') == 'topic' and not last.get('nick'):
+        info.update(last)
+        info['update'] = last_id
+    self.irc_channel_log_append(channel, [get_timed_uid(), info])
 
   def on_join(self, parts, write_cb):
     nickname, userhost = parts[0].split('!', 1)
