@@ -116,7 +116,7 @@ mutiny = {
       mutiny.retry = 1;
       mutiny.render(data);
     }).error(function() {
-      setTimeout('mutiny.load_data();', mutiny.retry);
+      setTimeout('mutiny.load_data();', 1000 * mutiny.retry);
       mutiny.retry = mutiny.retry * 2;
       if (mutiny.retry > mutiny.max_retry)
         mutiny_retry = mutiny.max_retry;
