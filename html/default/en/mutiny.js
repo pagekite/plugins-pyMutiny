@@ -2,6 +2,9 @@ mutiny = {
   channel_log: [],
   seen: '0',
 
+  retry: 1,
+  max_retry: 60,
+
   trim_log: function() {
     /* FIXME: If log has grown too long, play nice and delete some events. */
   },
@@ -110,7 +113,13 @@ mutiny = {
       'seen': mutiny.seen,
       'timeout': timeout
     }, function(data, textStatus, jqXHR) {
+      mutiny.retry = 1;
       mutiny.render(data);
+    }).error(function() {
+      setTimeout('mutiny.load_data();', mutiny.retry);
+      mutiny.retry = mutiny.retry * 2;
+      if (mutiny.retry > mutiny.max_retry)
+        mutiny_retry = mutiny.max_retry;
     });
   },
 
