@@ -18,6 +18,22 @@ h1, h2, h3, h4 {
   max-width: 300px;
 }
 
+#disconnected {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 2px 4px;
+  margin: 0 10px;
+  text-align: center;
+  background: #ff0;
+  color: #000;
+  display: none;
+}
+#countdown {
+  font-weight: bold;
+  color: #070;
+}
+
 #channel, #input, #people, #me {
   padding: 0px; margin: 5px 10px 20px 10px; border: 1px solid #404;
   color: #000;

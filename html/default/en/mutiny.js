@@ -55,7 +55,7 @@ mutiny = {
 
   render: function(data) {
     /* Schedule refresh first, in case we crash and burn. */
-    setTimeout('mutiny.load_data(60)', 50);
+    setTimeout('mutiny.load_data(60);', 50);
 
     for (idx in data) {
       mutiny.channel_log.push(data[idx]);
@@ -115,8 +115,15 @@ mutiny = {
     }, function(data, textStatus, jqXHR) {
       mutiny.retry = 1;
       mutiny.render(data);
+      $('#disconnected').hide();
     }).error(function() {
       setTimeout('mutiny.load_data();', 1000 * mutiny.retry);
+      if (mutiny.retry > 2) {
+        for (var i = 1; i <= mutiny.retry; i++) {
+          setTimeout('$("#countdown").html('+i+');', 1000 * (mutiny.retry-i));
+        }
+        $('#disconnected').show();
+      }
       mutiny.retry = mutiny.retry * 2;
       if (mutiny.retry > mutiny.max_retry)
         mutiny_retry = mutiny.max_retry;
