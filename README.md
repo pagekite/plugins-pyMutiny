@@ -61,18 +61,18 @@ The combined "binary" is generated using
 
 A bunch of ideas by importance/feasibility:
 
+   * Twitter / Facebook / BrowserID / Google /Gravatar authenticated sign in
+   * Invite-only or Authenticated-only channels
+   * Tagging/Starring/ThumbsUp/ThumbsDown for comments in the web UI
+   * Election helper
    * Permanent logging
    * Browsable stored logs
-   * Twitter / Facebook / BrowserID / Google /Gravatar authenticated sign in
-   * Election helper
    * Nickserv support
-   * Invite-only or Authenticated-only channels
-   * Tagging/Starring comments in the web UI
    * Search engine
-   * Banning users
    * Channels as RSS / Atom / ActivityStreams?
    * Embeddeable UI for use as blog commenting engine?
    * Rebroadcast Twitter / ActivityStream feeds
+   * Traditional bot roles: Banning users etc.
 
 Done:
 

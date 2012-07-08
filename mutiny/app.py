@@ -125,6 +125,18 @@ class Mutiny(IrcBot):
       channel = '#' + channel
     return channel
 
+  def renderChannelList(self):
+    html = []
+    for channel in self.channels:
+      html.append(('<li><a href="/join/irc/%s">%s</a></li>'
+                   ) % (channel.replace('#', ''), channel))
+    if html:
+      html[0:0] = ['<ul class="channel_list">']
+      html.append('</ul>')
+    else:
+      html = ['<ul class="channel_list_empty"><i>No channels</i></ul>']
+    return ''.join(html)
+
   def handleHttpRequest(self, req, scheme, netloc, path,
                               params, query, frag,
                               qs, posted, cookies, user=None):
@@ -154,7 +166,7 @@ class Mutiny(IrcBot):
         if path == '':
           template = self.load_template('index.html', config=page)
           page.update({
-            'linked_channel_list': ''
+            'linked_channel_list': self.renderChannelList()
           })
         elif path.startswith('_api/v1/'):
           return self.handleApiRequest(req, path, qs, posted, cookies)
