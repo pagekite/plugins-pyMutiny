@@ -29,7 +29,7 @@ import time
 import traceback
 
 
-COUNTER, COUNTER_LOCK = 0, threading.Lock()
+COUNTER, COUNTER_LOCK = random.randint(0, 0xffffff), threading.Lock()
 def get_unique_id():
   global COUNTER, COUNTER_LOCK
   COUNTER_LOCK.acquire()
@@ -41,7 +41,7 @@ def get_unique_id():
 def get_timed_uid():
   global COUNTER, COUNTER_LOCK
   COUNTER_LOCK.acquire()
-  uid = '%d-%x' % (time.time(), COUNTER)
+  uid = '%d-%8.8x' % (time.time(), COUNTER)
   COUNTER += 1
   COUNTER_LOCK.release()
   return uid
@@ -98,9 +98,14 @@ class IrcClient:
       for p in range(0, len(parts)):
         if parts[p] and parts[p][0] == ':':
           parts[p] = parts[p][1:]
-      return getattr(self, 'on_%s' % parts[1].lower())(parts, write_cb)
+      callback = getattr(self, 'on_%s' % parts[1].lower())
     except (IndexError, AttributeError, ValueError):
       print '%s' % parts
+      return None
+    try:
+      return callback(parts, write_cb)
+    except:
+      print '%s' % traceback.format_exc()
       return None
 
   ### Protocol helpers ###
@@ -147,9 +152,9 @@ class IrcClient:
     print 'ERROR: %s' % parts
     write_cb('QUIT\r\n')
 
-  def on_join(self, parts, write_cb): """Nick JOINed."""
+  def on_join(self, parts, write_cb): """User JOINed."""
   def on_notice(self, parts, write_cb): """Bots must ignore NOTICE messages."""
-  #def on_part(self, parts, write_cb): """Nick dePARTed."""
+# def on_part(self, parts, write_cb): """User dePARTed."""
 
   def on_ping(self, parts, write_cb):
     write_cb('PONG %s\r\n' % parts[2])
@@ -159,7 +164,7 @@ class IrcClient:
       return self.on_privmsg_self(parts, write_cb)
     elif parts[2] in self.channels:
       if parts[3].strip().lower().startswith('%s:' % self.nickname):
-        return self.on_privmsg_self(parts, write_cb)
+        self.on_privmsg_self(parts, write_cb)
       return self.on_privmsg_channel(parts, write_cb)
 
   def on_privmsg_self(self, parts, write_cb):
@@ -169,6 +174,8 @@ class IrcClient:
               ) % fromnick)
 
   def on_privmsg_channel(self, parts, write_cb): """Messages to channels."""
+
+# def on_quit(self, parts, write_cb): """User QUIT."""
 
 
 class IrcLogger(IrcClient):
@@ -181,6 +188,7 @@ class IrcLogger(IrcClient):
     self.logs = {}
     self.want_whois = []
     self.whois_data = {}
+    self.whois_cache = {}
     self.watchers = {}
 
   def irc_channel_log(self, channel):
@@ -208,41 +216,8 @@ class IrcLogger(IrcClient):
         cond.notify()
         cond.release()
 
-  def irc_log_merge(self, log, data):
-    if log:
-      log_id, log_info = log[-1]
-      new_id, new_info = data
-      delta = int(new_id.split('-')[0]) - int(log_id.split('-')[0])
-      if ((delta < 15) and
-          (log_info.get('nick', '') == new_info.get('nick', ''))):
-        # Repeated join/part messages just zero each-other out.
-        if ((new_info['event'] in ('join', 'part')) and
-            (log_info['event'] in ('join', 'part')) and
-            (new_info['event'] != log_info['event'])):
-          log.pop(-1)
-          new_info.update({
-            'event': 'delete',
-            'target': log_id
-          })
-          return [data]
-        # Subsequent messages from the person get merged into one event.
-        elif ((new_info['event'] == 'msg') and
-              (log_info['event'] == 'msg')):
-          if new_info['text'] != log_info['text']:
-            new_info['text'] =  '\n'.join([log_info['text'], new_info['text']])
-            return [[get_timed_uid(), {
-              'event': 'delete',
-              'target': log_id
-            }], data]
-          else:
-            # ... or squelched if they are repeating themselves.
-            return []
-    return [data]
-
   def irc_channel_log_append(self, channel, data):
-    log = self.irc_channel_log(channel)
-    for line in self.irc_log_merge(log, data):
-      log.append(line)
+    self.irc_channel_log(channel).append(data)
     self.irc_notify_watchers(channel)
 
   def irc_whois(self, nick, write_cb):
@@ -253,10 +228,36 @@ class IrcLogger(IrcClient):
     except ValueError:
       pass
 
+  def irc_channel_users(self, channel):
+    users = {}
+    for ts, info in irc.channel_log(channel):
+      if 'nick' in info:
+        nick = info['nick']
+        event = info.get('event')
+        if event == 'whois':
+          users[nick] = info
+        elif event in ('part', 'quit') and nick in users:
+          del users[nick]
+    return users
+
   def irc_whois_info(self, nick):
     if nick not in self.whois_data:
-      self.whois_data[nick] = {'event': 'whois', 'nick': nick}
+      self.whois_data[nick] = {
+        'event': 'whois',
+        'nick': nick
+      }
     return self.whois_data[nick]
+
+  def irc_cached_whois(self, nickname, userhost=None):
+    nuh = '%s!%s' % (nickname, userhost)
+    if userhost and nuh in self.whois_cache:
+      return self.whois_cache[nuh]
+    info = {'uid': ''}
+    for nuh in self.whois_cache:
+      n_info = self.whois_cache[nuh]
+      if n_info['uid'] > info['uid']:
+        info = n_info
+    return info
 
   def on_353(self, parts, write_cb):
     """We want more info about anyone listed in /NAMES."""
@@ -287,38 +288,83 @@ class IrcLogger(IrcClient):
     })
 
   def on_318(self, parts, write_cb):
-    """On end of /WHOIS, run /WHOIS for interesting peoples."""
-    info = self.irc_whois_info(parts[3])
-    for channel in info.get('channels', []):
-      if channel in self.channels:
-        self.irc_channel_log_append(channel, [get_timed_uid(), info])
-    del self.whois_data[parts[3]]
+    """On end of /WHOIS, record result, ask for more."""
+    nickname = parts[3]
+    info = self.irc_whois_info(nickname)
+    del self.whois_data[nickname]
+
+    nuh = '%s!%s' % (nickname, info['userhost'])
+    info['uid'] = self.whois_cache.get(nuh, {}).get('uid') or get_timed_uid()
+    self.whois_cache[nuh] = info
+
+    if nickname != self.nickname:
+      for channel in info.get('channels', []):
+        if channel in self.channels:
+          self.irc_channel_log_append(channel, [info['uid'], info])
+
     if self.want_whois:
       self.irc_whois(self.want_whois.pop(0), write_cb)
-    IrcClient.on_318(self, parts, write_cb)
 
   def on_join(self, parts, write_cb):
-    nickname = parts[0].split('!')[0]
-    self.irc_channel_log_append(parts[2], [get_timed_uid(), {
-      'event': 'join',
-      'nick': nickname
-    }])
-    self.irc_whois(nickname, write_cb)
+    nickname, userhost = parts[0].split('!', 1)
+    if nickname != self.nickname:
+      self.irc_channel_log_append(parts[2], [get_timed_uid(), {
+        'event': 'join',
+        'nick': nickname,
+        'uid': self.irc_cached_whois(nickname, userhost).get('uid')
+      }])
+      self.irc_whois(nickname, write_cb)
+
+  def on_nick(self, parts, write_cb):
+    nickname, userhost = parts[0].split('!', 1)
+    new_nick = parts[2]
+
+    whois = self.irc_cached_whois(nickname, userhost)
+    if whois['uid']:
+      whois['nick'] = new_nick
+      self.whois_cache['%s!%s' % (new_nick, userhost)] = whois
+      if parts[0] in self.whois_cache:
+        del self.whois_cache[parts[0]]
+    else:
+      whois = None
+
+    for channel in whois['channels']:
+      if channel in self.channels:
+        if whois:
+          self.irc_channel_log_append(channel, [get_timed_uid(), whois])
+        self.irc_channel_log_append(channel, [get_timed_uid(), {
+          'event': 'nick',
+          'nick': nickname,
+          'text': new_nick,
+          'uid': whois.get('uid')
+        }])
 
   def on_part(self, parts, write_cb):
-    nickname = parts[0].split('!')[0]
+    nickname, userhost = parts[0].split('!', 1)
     self.irc_channel_log_append(parts[2], [get_timed_uid(), {
       'event': 'part',
-      'nick': nickname
+      'nick': nickname,
+      'uid': self.irc_cached_whois(nickname, userhost).get('uid')
     }])
+    # FIXME: Update WHOIS status to reflect gone-ness.
 
   def on_privmsg_channel(self, parts, write_cb):
-    nickname = parts[0].split('!')[0]
+    nickname, userhost = parts[0].split('!', 1)
     msg_type, text = self.irc_decode_message(parts[3])
     self.irc_channel_log_append(parts[2], [get_timed_uid(), {
       'event': msg_type,
+      'text': text,
       'nick': nickname,
-      'text': text
+      'uid': self.irc_cached_whois(nickname, userhost).get('uid')
+    }])
+
+  def on_topic(self, parts, write_cb):
+    nickname, userhost = parts[0].split('!', 1)
+    self.irc_channel_log_append(parts[2], [get_timed_uid(), {
+      'event': 'topic',
+      'text': parts[3],
+      'nick': nickname,
+      'uid': self.irc_cached_whois(nickname, userhost).get('uid')
     }])
 
 
@@ -336,9 +382,13 @@ class IrcBot(IrcLogger):
       channel = None
     parts = message.split()
     try:
-      return getattr(self, 'cmd_%s' % parts[0].lower()
-                     )(fromnick, channel, parts, write_cb)
+      callback = getattr(self, 'cmd_%s' % parts[0].lower())
     except (IndexError, AttributeError):
+      return None
+    try:
+      return callback(fromnick, channel, parts, write_cb)
+    except:
+      print '%s' % traceback.format_exc()
       return None
 
   def cmd_ping(self, fromnick, channel, parts, write_cb):

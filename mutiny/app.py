@@ -243,7 +243,7 @@ class Mutiny(IrcBot):
     if limit:
       data = data[-limit:]
 
-    return 'application/json', json.dumps(data)
+    return 'application/json', json.dumps(data, indent=1)
 
 
 if __name__ == "__main__":
