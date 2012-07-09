@@ -76,12 +76,13 @@ class Mutiny():
   def parse_spec(self, server):
     if ':' in server:
       proto, server = server.split(':', 1)
+      if proto in ('ircs', 'sirc'): proto = 'ssl'
     else:
       proto = 'irc'
     if ':' in server:
       server, port = server.strip('/').rsplit(':', 1)
     else:
-      server, port = server.strip('/'), 6667
+      server, port = server.strip('/'), (proto == 'ssl') and 6697 or 6667
     return proto, str(server), int(port)
 
   def start(self):
@@ -163,7 +164,7 @@ class Mutiny():
       html[0:0] = ['<ul class="channel_list">']
       html.append('</ul>')
     else:
-      html = ['<ul class="channel_list_empty"><i>No channels</i></ul>']
+      html = ['<ul class="channel_list_empty"><i>None, sorry</i></ul>']
     return ''.join(html)
 
   def handleHttpRequest(self, req, scheme, netloc, path,
@@ -201,14 +202,25 @@ class Mutiny():
           return self.handleApiRequest(req, path, qs, posted, cookies)
         elif path.startswith('join/'):
           join, network, channel = path.split('/')
-          page.update({
-            'network': network,
-            'channel': self.fixup_channel(channel),
-            'log_status': 'off',
-            'log_not': 'not ',
-            'log_url': '/',
-          })
-          template = self.load_template('channel.html', config=page)
+          channel = self.fixup_channel(channel)
+          nw_channels = self.config_irc.get(network, {}).get('channels', [])
+          if channel in nw_channels:
+            info = nw_channels[channel]
+            page.update({
+              'network': network,
+              'network_desc': self.config_irc[network].get('description',
+                                                           network),
+              'channel': channel,
+              'channel_desc': info.get('description', channel),
+              'channel_access': info.get('access', 'open').replace(',', ' '),
+              'logged_in': 'no',
+              'log_status': 'off',
+              'log_not': 'not ',
+              'log_url': '/',
+            })
+            template = self.load_template('channel.html', config=page)
+          else:
+            raise NotFoundException()
         elif (path.startswith('_skin/') or
               path in ('favicon.ico', )):
           template = self.load_template(path.split('/')[-1], config=page)
@@ -219,7 +231,7 @@ class Mutiny():
           # FIXME: Have an explicit search-engine policy in settings
           raise NotFoundException('FIXME')
         else:
-          cachectrl, code, data = 'no-cache', 404, '<h1>404 Not found</h1>\n'
+          raise NotFoundException()
     except NotFoundException:
       cachectrl, code, data = 'no-cache', 404, '<h1>404 Not found</h1>\n'
 
@@ -318,7 +330,7 @@ def Configuration():
   except ValueError, e:
     print 'Failed to parse config: %s' % e
     sys.exit(1)
-  except OSError:
+  except (OSError, IOError):
     pass
 
   for arg in sys.argv[1:]:
@@ -353,6 +365,10 @@ def Configuration():
     config['irc']['irc']['channels'] = channels = {}
     for channel in arg.rsplit('/', 1)[1].split(',', 1):
       channels[channel] = {'description': 'IRC channel', 'access': 'open'}
+  if len(sys.argv) > 1:
+    arg = sys.argv.pop(1)
+    for channel in channels:
+      channels[channel]['access'] = arg
 
   print 'Config is: %s' % json.dumps(config, indent=2)
   return config
