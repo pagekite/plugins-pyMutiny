@@ -54,13 +54,15 @@ class IrcClient:
 
   nickname = 'Mutiny_%d' % random.randint(0, 1000)
   fullname = "Mutiny: Pirate Meeting Gateway"
+  low_nick = '<unset>'
 
   def __init__(self):
     self.partial = ''
     self.uid = get_unique_id()
 
   def irc_nickname(self, nickname):
-    self.nickname = nickname.lower()
+    self.nickname = nickname
+    self.low_nick = nickname.lower()
     return self
 
   def irc_fullname(self, fullname):
@@ -123,7 +125,8 @@ class IrcClient:
   ### Protocol callbacks follow ###
 
   def on_001(self, parts, write_cb):
-    self.nickname = parts[2].lower()
+    self.nickname = parts[2]
+    self.low_nick = parts[2].lower()
 
   def on_002(self, parts, write_cb): """Server info."""
   def on_003(self, parts, write_cb): """Server uptime."""
@@ -162,10 +165,10 @@ class IrcClient:
     write_cb('PONG %s\r\n' % parts[2])
 
   def on_privmsg(self, parts, write_cb):
-    if parts[2].lower() == self.nickname:
+    if parts[2].lower() == self.low_nick:
       return self.on_privmsg_self(parts, write_cb)
     elif parts[2] in self.channels:
-      if parts[3].strip().lower().startswith('%s:' % self.nickname):
+      if parts[3].strip().lower().startswith('%s:' % self.low_nick):
         self.on_privmsg_self(parts, write_cb)
       return self.on_privmsg_channel(parts, write_cb)
 
@@ -299,7 +302,7 @@ class IrcLogger(IrcClient):
     info['uid'] = self.whois_cache.get(nuh, {}).get('uid') or get_timed_uid()
     self.whois_cache[nuh] = info
 
-    if nickname != self.nickname:
+    if nickname.lower() != self.low_nick:
       for channel in info.get('channels', []):
         if channel in self.channels:
           self.irc_channel_log_append(channel, [info['uid'], info])
@@ -341,7 +344,7 @@ class IrcLogger(IrcClient):
 
   def on_join(self, parts, write_cb):
     nickname, userhost = parts[0].split('!', 1)
-    if nickname != self.nickname:
+    if nickname.lower() != self.low_nick:
       self.irc_channel_log_append(parts[2], [get_timed_uid(), {
         'event': 'join',
         'nick': nickname,
@@ -408,7 +411,7 @@ class IrcBot(IrcLogger):
   def on_privmsg_self(self, parts, write_cb):
     fromnick = parts[0].split('!', 1)[0]
     message = parts[3].strip()
-    if message.lower().startswith('%s:' % self.nickname):
+    if message.lower().startswith('%s:' % self.low_nick):
       message = message[len(self.nickname)+1:]
     if parts[2].lower() != self.nickname:
       channel = parts[2]
