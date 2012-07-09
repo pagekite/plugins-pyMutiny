@@ -41,7 +41,6 @@ from mutiny.irc import IrcClient, IrcBot
 
 
 DEFAULT_PATH = os.path.expanduser('~/.mutiny')
-DEFAULT_PATH_HTML = os.path.join(DEFAULT_PATH, 'html')
 
 html_escape_table = {
   "&": "&amp;",
@@ -60,46 +59,64 @@ class NotFoundException(Exception):
   pass
 
 
-class Mutiny(IrcBot):
+class Mutiny():
   """The main Mutiny class."""
 
-  def __init__(self, config, nickname, server, channels):
-    self.log_path = config['log_path']
+  def __init__(self, config):
+    self.work_dir = config['work_dir']
+    self.listen_on = (config['http_host'], int(config['http_port']))
     self.config = config
-    self.listen_on = ('localhost', 4950)  # 99 bottles of beer on the wall!
-    if ':' in server:
-      self.proto, server = server.split(':', 1)
-    else:
-      self.proto = 'irc'
-    if ':' in server:
-      self.server, self.port = server.strip('/').rsplit(':', 1)
-    else:
-      self.server, self.port = server.strip('/'), 6667
 
-    IrcBot.__init__(self)
-    self.irc_nickname(nickname).irc_channels(channels)
+    self.event_loop = SelectLoop()
+    self.DEBUG = self.event_loop.DEBUG = self.config.get('debug', False)
 
-    self.select_loop = SelectLoop()
-    self.DEBUG = self.select_loop.DEBUG = self.config.get('debug', False)
+    self.config_irc = config['irc']
+    self.networks = {}
+
+  def parse_spec(self, server):
+    if ':' in server:
+      proto, server = server.split(':', 1)
+    else:
+      proto = 'irc'
+    if ':' in server:
+      server, port = server.strip('/').rsplit(':', 1)
+    else:
+      server, port = server.strip('/'), 6667
+    return proto, str(server), int(port)
 
   def start(self):
-    if not os.path.exists(self.log_path):
-      os.mkdir(self.log_path)
-    Connect(self.proto, self.server, self.port,
-            self.connected, self.failed).start()
+    if not os.path.exists(self.work_dir):
+      os.mkdir(self.work_dir)
+    for network, settings in self.config['irc'].iteritems():
+      if settings['enable']:
+        bot = self.networks[network] = IrcBot()
+
+        proto, server, port = self.parse_spec(settings['servers'][0])
+        bot.irc_nickname(settings['nickname'])
+        bot.irc_channels(settings['channels'].keys())
+
+        print 'Connecting to %-15s %s://%s:%d/' % (network, proto, server, port)
+        Connect(proto, server, port, *self.callbacks(network, bot)).start()
+    self.event_loop.start()
 
   def stop(self):
-    self.select_loop.stop()
+    self.event_loop.stop()
 
-  def failed(self, socket):
+  def failed(self, network, bot, socket):
     self.stop()
     raise
 
-  def connected(self, socket):
-    print 'Connected to %s://%s:%s/' % (self.proto, self.server, self.port)
-    self.process_connect(lambda d: self.select_loop.sendall(socket, d))
-    self.select_loop.add(socket, self)
-    self.select_loop.start()
+  def callbacks(self, network, bot):
+    def ok(sockfd):
+      return self.connected(network, bot, sockfd)
+    def fail(sockfd):
+      return self.failed(network, bot, sockfd)
+    return ok, fail
+
+  def connected(self, network, bot, sockfd):
+    print 'Connected to %s!' % (network)
+    bot.process_connect(lambda d: self.event_loop.sendall(sockfd, d))
+    self.event_loop.add(sockfd, bot)
 
   def load_template(self, name, config={}, max_size=102400):
     sv = {}
@@ -127,9 +144,21 @@ class Mutiny(IrcBot):
 
   def renderChannelList(self):
     html = []
-    for channel in self.channels:
-      html.append(('<li><a href="/join/irc/%s">%s</a></li>'
-                   ) % (channel.replace('#', ''), channel))
+    networks = sorted([(n, self.config_irc[n])
+                       for n in self.config_irc
+                             if self.config_irc[n]['enable']])
+    for net_id, network in networks:
+      if len(networks) > 1:
+        html.append('<li class="network">%s<ul>' % network.get('description',
+                                                               net_id))
+      channels = network['channels']
+      for ch_id, channel in sorted([(i, c) for i, c in channels.items()]):
+        if channel.get('access', 'open') != 'unlisted':
+          html.append(('<li><a href="/join/%s/%s">%s</a></li>'
+                       ) % (net_id, ch_id.replace('#', ''),
+                            channel.get('description', ch_id)))
+      if len(networks) > 1:
+        html.append('</ul></li>')
     if html:
       html[0:0] = ['<ul class="channel_list">']
       html.append('</ul>')
@@ -154,7 +183,7 @@ class Mutiny(IrcBot):
     # Shared values for rendering templates
     host = req.header('Host', 'unknown').lower()
     page = {
-      'templates': DEFAULT_PATH_HTML,
+      'templates': os.path.join(self.work_dir, 'html'),
       'version': VERSION,
       'skin': host,
       'host': host,
@@ -233,7 +262,8 @@ class Mutiny(IrcBot):
     data = []
     try:
       while not data:
-        data = self.irc_channel_log(channel)
+        bot = self.networks[network]
+        data = bot.irc_channel_log(channel)
         if after or grep:
           data = [x for x in data if (x[0] > after) and
                                      (not grep or
@@ -241,12 +271,12 @@ class Mutiny(IrcBot):
                                       grep in x[1].get('text', ''))]
         if timeout and not data:
           cond = threading.Condition()
-          ev = self.select_loop.add_sleeper(timeout, cond, 'API request')
-          self.irc_watch_channel(channel, ev)
+          ev = self.event_loop.add_sleeper(timeout, cond, 'API request')
+          bot.irc_watch_channel(channel, ev)
           cond.acquire()
           cond.wait()
           cond.release()
-          self.select_loop.remove_sleeper(ev)
+          self.event_loop.remove_sleeper(ev)
         if time.time() >= timeout:
           break
     except SelectAborted:
@@ -258,55 +288,90 @@ class Mutiny(IrcBot):
     return 'application/json', json.dumps(data, indent=1)
 
 
+def Configuration():
+  if '--version' in sys.argv:
+    print '%s' % VERSION
+    sys.exit(0)
+
+  config = {
+    'work_dir': DEFAULT_PATH,
+    'http_port': 4950,
+    'http_host': 'localhost',
+    'lang': 'en',
+    'skin': 'default',
+    'debug': False,
+    'irc': {},
+    # These are ignored, but picked up by sockschain
+    'nossl': None,
+    'nopyopenssl': None,
+  }
+
+  # Set work dir before loading config, all other command-line arguments
+  # will override the config file.
+  for arg in sys.argv[1:]:
+    if arg.startswith('--work_dir='):
+      config['work_dir'] = arg.split('=', 1)[1]
+
+  try:
+    fd = open(os.path.join(config['work_dir'], 'config.json'), 'rb')
+    config.update(json.load(fd))
+  except ValueError, e:
+    print 'Failed to parse config: %s' % e
+    sys.exit(1)
+  except OSError:
+    pass
+
+  for arg in sys.argv[1:]:
+    if arg.startswith('--'):
+      found = None
+      for var in config:
+        if arg.startswith('--%s=' % var):
+          found = config[var] = arg.split('=', 1)[1]
+        elif arg == ('--%s' % var):
+          found = config[var] = True
+      if found is None:
+        raise ValueError('Unknown arg: %s' % arg)
+      sys.argv.remove(arg)
+
+  if config['debug']:
+    def dbg(text):
+      print '%s' % text
+    sockschain.DEBUG = dbg
+
+  nickname = server = channels = None
+  if len(sys.argv) > 1:
+    config['irc']['irc'] = {
+      'enable': 1,
+      'nickname': sys.argv.pop(1).replace(' ', '_'),
+      'userinfo': 'Mutiny %s' % VERSION
+    }
+  if len(sys.argv) > 1:
+    arg = sys.argv.pop(1)
+    config['irc']['irc']['servers'] = [
+      arg.rsplit('/', 1)[0]
+    ]
+    config['irc']['irc']['channels'] = channels = {}
+    for channel in arg.rsplit('/', 1)[1].split(',', 1):
+      channels[channel] = {'description': 'IRC channel', 'access': 'open'}
+
+  print 'Config is: %s' % json.dumps(config, indent=2)
+  return config
+
+
 if __name__ == "__main__":
   try:
-    if '--version' in sys.argv:
-      print '%s' % VERSION
-      sys.exit(0)
-
-    config = {
-      'log_path': DEFAULT_PATH,
-      'lang': 'en',
-      'skin': 'default',
-      'debug': False,
-      # These are ignored, but picked up by sockschain
-      'nossl': None,
-      'nopyopenssl': None,
-    }
-    for arg in sys.argv[1:]:
-      if arg.startswith('--'):
-        found = None
-        for var in config:
-          if arg.startswith('--%s=' % var):
-            found = config[var] = arg.split('=', 1)[1]
-          elif arg == ('--%s' % var):
-            found = config[var] = True
-        if found is None:
-          raise ValueError('Unknown arg: %s' % arg)
-        sys.argv.remove(arg)
-
-    if config['debug']:
-      def dbg(text):
-        print '%s' % text
-      sockschain.DEBUG = dbg
-
-    nickname = sys.argv[1].replace(' ', '_')
-    server = sys.argv[2].rsplit('/', 1)[0]
-    channels = sys.argv[2].rsplit('/', 1)[1].split(',', 1)
-
-    mutiny = Mutiny(config,  nickname, server, channels)
-
+    mutiny = Mutiny(Configuration())
   except (IndexError, ValueError, OSError, IOError):
     print '%s\n' % traceback.format_exc()
     print 'Usage: %s <nick> irc://<server:port>/<channel>' % sys.argv[0]
     print '       %s <nick> ssl://<server:port>/<channel>' % sys.argv[0]
     print
-    print 'Logs and settings will be stored here: %s' % config['log_path']
+    print 'Logs and settings will be stored here: %s' % config['work_dir']
     print
     sys.exit(1)
   try:
     try:
-      print 'This is Mutiny.py, listening on %s:%s' % mutiny.listen_on
+      print 'This is Mutiny.py, listening on http://%s:%s/' % mutiny.listen_on
       print 'Fork me on Github: https://github.com/pagekite/plugins-pyMutiny'
       print
       mutiny.start()
