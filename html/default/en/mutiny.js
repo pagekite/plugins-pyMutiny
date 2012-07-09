@@ -4,7 +4,8 @@ mutiny = {
 
   api_url: '',
   retry: 1,
-  max_retry: 60,
+  max_retry: 64,
+  max_retry_timeout: 8,
   refresh: 90,
   running: 0,
 
@@ -128,18 +129,28 @@ mutiny = {
         mutiny.render(data);
         $('#disconnected').hide();
       },
-      error: function(jqXHR, status, errorThrown) {
+      error: function(jqXHR, stat, errThrown) {
         mutiny.running -= 1;
         setTimeout('mutiny.load_data(0);', 1000 * mutiny.retry);
         if (mutiny.retry > 2) {
           for (var i = 1; i <= mutiny.retry; i++) {
             setTimeout('$("#countdown").html('+i+');', 1000 * (mutiny.retry-i));
           }
+          setTimeout('$("#disconnected").hide();', (1000 * mutiny.retry) - 250);
           $('#disconnected').show();
         }
         mutiny.retry = mutiny.retry * 2;
-        if (mutiny.retry > mutiny.max_retry)
-          mutiny_retry = mutiny.max_retry;
+        if (stat == 'timeout') {
+          if (mutiny.retry > mutiny.max_retry_timeout)
+            mutiny.retry = mutiny.max_retry_timeout;
+        }
+        else {
+          if (errThrown) {
+            $('#debug_log').prepend($('<p/>').html('Error: '+stat+' '+errThrown));
+            if (mutiny.retry > mutiny.max_retry)
+              mutiny_retry = mutiny.max_retry;
+          }
+        }
       }
     });
   },
