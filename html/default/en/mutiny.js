@@ -143,17 +143,19 @@ mutiny = {
           $('#disconnected').show();
         }
         if (stat == 'timeout') {
-          mutiny.retry = mutiny.retry * 2;
-          if (mutiny.retry > mutiny.max_retry_timeout)
+          mutiny.retry = mutiny.retry + 1;
+          if (mutiny.retry > mutiny.max_retry_timeout) {
             mutiny.retry = mutiny.max_retry_timeout;
+          }
         }
         else {
           if (errThrown) {
             mutiny.retry = mutiny.retry * 2;
             $('#debug_log').prepend($('<p/>').html('Error: '+stat+' '+errThrown));
           }
-          if (mutiny.retry > mutiny.max_retry)
-            mutiny_retry = mutiny.max_retry;
+          if (mutiny.retry > mutiny.max_retry) {
+            mutiny.retry = mutiny.max_retry;
+          }
         }
       }
     });
