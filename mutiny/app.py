@@ -153,7 +153,7 @@ class Mutiny():
                                                                net_id))
       channels = network['channels']
       for ch_id, channel in sorted([(i, c) for i, c in channels.items()]):
-        if channel.get('access', 'open') != 'unlisted':
+        if 'unlisted' not in channel.get('access', 'open'):
           html.append(('<li><a href="/join/%s/%s">%s</a></li>'
                        ) % (net_id, ch_id.replace('#', ''),
                             channel.get('description', ch_id)))
