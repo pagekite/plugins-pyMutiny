@@ -1,5 +1,6 @@
 mutiny = {
   channel_log: [],
+  avatars: {},
   seen: '0',
 
   api_url: '',
@@ -35,7 +36,7 @@ mutiny = {
 
   render_nick: function(nick, uid, template) {
     var color = '#';
-    var avatar = '/_skin/avatar_'+uid[uid.length-1]+'.jpg';
+    var avatar = mutiny.avatars[uid];
     var max = 'f'.charCodeAt(0);
     if (nick)
       for (var n in [0, 1, 2, 3, 4, 5]) {
@@ -77,7 +78,9 @@ mutiny = {
       if (info.event == 'whois') {
         iid = dom_id = info.uid;
         target = 'people';
-        tpl = mutiny.render_text(/_INFO_/g, info.userinfo, tpl);
+        mutiny.avatars[info.uid] = info.avatar;
+        tpl = mutiny.render_text(/_INFO_/g, info.userinfo,
+                tpl.replace(/_URL_/g, info.url || ''));
       }
       var oi = $('#'+dom_id);
       if (info.event == 'delete') {
@@ -139,17 +142,18 @@ mutiny = {
           setTimeout('$("#disconnected").hide();', (1000 * mutiny.retry) - 250);
           $('#disconnected').show();
         }
-        mutiny.retry = mutiny.retry * 2;
         if (stat == 'timeout') {
+          mutiny.retry = mutiny.retry * 2;
           if (mutiny.retry > mutiny.max_retry_timeout)
             mutiny.retry = mutiny.max_retry_timeout;
         }
         else {
           if (errThrown) {
+            mutiny.retry = mutiny.retry * 2;
             $('#debug_log').prepend($('<p/>').html('Error: '+stat+' '+errThrown));
-            if (mutiny.retry > mutiny.max_retry)
-              mutiny_retry = mutiny.max_retry;
           }
+          if (mutiny.retry > mutiny.max_retry)
+            mutiny_retry = mutiny.max_retry;
         }
       }
     });

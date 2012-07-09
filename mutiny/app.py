@@ -26,6 +26,7 @@ VERSION = 'v0.0'
 # Python standard
 import json
 import os
+import random
 import sys
 import threading
 import time
@@ -91,19 +92,23 @@ class Mutiny():
     for network, settings in self.config['irc'].iteritems():
       if settings['enable']:
         bot = self.networks[network] = IrcBot()
-
-        proto, server, port = self.parse_spec(settings['servers'][0])
         bot.irc_nickname(settings['nickname'])
         bot.irc_channels(settings['channels'].keys())
-
-        print 'Connecting to %-15s %s://%s:%d/' % (network, proto, server, port)
-        Connect(proto, server, port, *self.callbacks(network, bot)).start()
+        self.connect_client(network, bot)
     self.event_loop.start()
+
+  def connect_client(self, network, client, server_spec=None):
+    if not server_spec:
+      server_spec = self.config['irc'][network]['servers'][0]
+    proto, server, port = self.parse_spec(server_spec)
+    print 'Connecting to %-15s %s://%s:%d/' % (network, proto, server, port)
+    Connect(proto, server, port, *self.callbacks(network, client)).start()
 
   def stop(self):
     self.event_loop.stop()
 
   def failed(self, network, bot, socket):
+    # FIXME: This is rather dumb, we should retry.
     self.stop()
     raise
 
@@ -182,56 +187,51 @@ class Mutiny():
     data = None
 
     # Shared values for rendering templates
+    page_url = req.absolute_url()
+    page_prefix = '/'.join(page_url.split('/', 4)[:3])
     host = req.header('Host', 'unknown').lower()
     page = {
       'templates': os.path.join(self.work_dir, 'html'),
       'version': VERSION,
       'skin': host,
       'host': host,
+      'page_path': '/'+path_url,
+      'page_url': page_url,
     }
 
     # Get the actual content.
     try:
       if req.command == 'GET':
+
         if path == '':
           template = self.load_template('index.html', config=page)
           page.update({
             'linked_channel_list': self.renderChannelList()
           })
+
         elif path.startswith('_api/v1/'):
           return self.handleApiRequest(req, path, qs, posted, cookies)
+
         elif path.startswith('join/'):
-          join, network, channel = path.split('/')
-          channel = self.fixup_channel(channel)
-          nw_channels = self.config_irc.get(network, {}).get('channels', [])
-          if channel in nw_channels:
-            info = nw_channels[channel]
-            page.update({
-              'network': network,
-              'network_desc': self.config_irc[network].get('description',
-                                                           network),
-              'channel': channel,
-              'channel_desc': info.get('description', channel),
-              'channel_access': info.get('access', 'open').replace(',', ' '),
-              'logged_in': 'no',
-              'log_status': 'off',
-              'log_not': 'not ',
-              'log_url': '/',
-            })
-            template = self.load_template('channel.html', config=page)
-          else:
-            raise NotFoundException()
+          template, page = self.prepareChannelPage(path, page)
+
         elif (path.startswith('_skin/') or
               path in ('favicon.ico', )):
           template = self.load_template(path.split('/')[-1], config=page)
           mime_type = HttpdLite.GuessMimeType(path)
           if mime_type != 'application/octet-stream' and path.endswith('.gz'):
             headers.append(('Content-Encoding', 'gzip'))
+
+        elif path.startswith('_authlite/') and req.auth_info:
+          return self.handleUserLogin(req, page_prefix, path, qs)
+
         elif path == 'robots.txt':
-          # FIXME: Have an explicit search-engine policy in settings
+          # FIXME: Have an explicit search-engine policy in settings?
           raise NotFoundException('FIXME')
+
         else:
           raise NotFoundException()
+
     except NotFoundException:
       cachectrl, code, data = 'no-cache', 404, '<h1>404 Not found</h1>\n'
 
@@ -244,6 +244,105 @@ class Mutiny():
     return req.sendResponse(data,
                             code=code, mimetype=mime_type,
                             header_list=headers, cachectrl=cachectrl)
+
+  def get_channel_from_path(self, path):
+    join, network, channel = path.split('/')
+    if join != 'join':
+      raise ValueError('Invalid path')
+    channel = self.fixup_channel(channel)
+    return network, channel
+
+  VALID_CHARS = 'abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  TRANSLATE = [
+    # Some things we map to underscores.
+    (u'\n\r\t\'\"&-', '_' * 100),
+    # Icelandic map
+    (u'\xe1\xe9\xed\xf3\xfa\xfd\xfe\xe6\xf6\xf0' +
+     u'\xc1\xc9\xcd\xd3\xda\xdd\xde\xc6\xd6\xd0',
+     ['a', 'e', 'i', 'o', 'u', 'y', 'th', 'a', 'o', 'd',
+      'A', 'E', 'I', 'O', 'U', 'Y', 'Th', 'A', 'O', 'D'])
+    # Add more maps here, unlisted chars get stripped. :-)
+  ]
+  def dumb_down(self, string):
+    for src, dst in self.TRANSLATE:
+      output = []
+      for c in string:
+        try:
+          output.append(dst[src.index(c)])
+        except ValueError:
+          output.append(c)
+      string = ''.join(output)
+    return ''.join(i for i in string if i in self.VALID_CHARS)
+
+  def handleUserLogin(self, req, page_prefix, path, qs):
+    state = qs.get('state', ['/'])[0]
+    network, channel = self.get_channel_from_path(state[1:])
+    provider, token = req.auth_info
+    profile = {
+      'source': provider,
+      'home': 'The Internet'
+    }
+
+    # First, pull details from their on-line profile, if possible...
+    try:
+      if provider == 'Facebook':
+        fbp = req.server.auth_handler.getFacebookProfile(token)
+        profile.update({
+          'name': fbp.get('name'),
+          'home': fbp.get('hometown', {}).get('name', 'The Internet'),
+          'uid': 'fb%s' % fbp.get('id', ''),
+          'pic': 'https://graph.facebook.com/%s/picture' % fbp.get('id', ''),
+          'url': 'https://www.facebook.com/%s' % fbp.get('username',
+                                                         fbp.get('id', ''))
+        })
+
+      elif provider == 'Google':
+        profile = req.server.auth_handler.getGoogleProfile(token)
+
+      else:
+        print '*** Not sure how to get profiles from %s' % provider
+
+    except (IOError, OSError):
+      # Network problems...?
+      pass
+
+    # Create a nick-name for them
+    nickname = profile.get('name', 'Guest %x' % random.randint(0, 10000))
+    while (len(nickname) > 15 and ' ' in nickname):
+      nickname = nickname.rsplit(' ', 1)[0]
+    profile['nick'] = self.dumb_down(nickname)
+
+    # Create an IRC client, start the connection.
+    client = IrcClient().irc_profile(profile).irc_channels([channel])
+    self.networks[network].users[client.uid] = client
+    self.connect_client(network, client)
+
+    # Finally, set a cookie with their client's UID.
+
+    print '%s' % json.dumps(profile, indent=2)
+    return req.sendResponse('<h1>Welcome!</h1>', code=302, msg='Moved',
+                            header_list=[('Location', page_prefix + state)])
+
+  def prepareChannelPage(self, path, page):
+    network, channel = self.get_channel_from_path(path)
+    nw_channels = self.config_irc.get(network, {}).get('channels', [])
+    if channel in nw_channels:
+      info = nw_channels[channel]
+      page.update({
+        'network': network,
+        'network_desc': self.config_irc[network].get('description', network),
+        'channel': channel,
+        'channel_desc': info.get('description', channel),
+        'channel_access': info.get('access', 'open').replace(',', ' '),
+        'logged_in': 'no',
+        'log_status': 'off',
+        'log_not': 'not ',
+        'log_url': '/',
+      })
+      template = self.load_template('channel.html', config=page)
+      return template, page
+    else:
+      raise NotFoundException()
 
   CORS_HEADERS = [
     ('Access-Control-Allow-Origin', '*'),
@@ -390,8 +489,18 @@ if __name__ == "__main__":
       print 'This is Mutiny.py, listening on http://%s:%s/' % mutiny.listen_on
       print 'Fork me on Github: https://github.com/pagekite/plugins-pyMutiny'
       print
+
+      auth_handler = HttpdLite.AuthHandler()
+      auth_cfg = mutiny.config.get('oauth2', {})
+      for provider in auth_cfg:
+        if provider in auth_handler.oauth2:
+          auth_handler.oauth2[provider].update(auth_cfg[provider])
+        else:
+          auth_handler.oauth2[provider] = auth_cfg[provider]
+
       mutiny.start()
-      HttpdLite.Server(mutiny.listen_on, mutiny).serve_forever()
+      HttpdLite.Server(mutiny.listen_on, mutiny,
+                       auth_handler=auth_handler).serve_forever()
     except KeyboardInterrupt:
       mutiny.stop()
   except:

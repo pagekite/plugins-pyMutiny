@@ -52,6 +52,12 @@ h1, h2, h3, h4 {
   overflow: hidden;
   margin-top: -20px;
 }
+.display-no {
+  display: none;
+}
+.nodisplay-yes {
+  display: none;
+}
 #input .privmsg {
   margin: 0;
   width: 85%;
@@ -59,6 +65,9 @@ h1, h2, h3, h4 {
 #input .send {
   margin: 0;
   width: 14%;
+}
+#pleaselogin {
+  text-align: center;
 }
 #recording {
   padding: 0px;

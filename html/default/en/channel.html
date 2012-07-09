@@ -22,10 +22,14 @@
   </h1>
   <div id='channel'>
   </div>
-  <!-- div id='input'>
+  <form id='input' class='display-%(logged_in)s'>
    <input class=privmsg type=text name='privmsg'
     ><input class=send type=submit value='Ahoy!'>
-  </div -->
+  </form>
+  <div id='pleaselogin' class='nodisplay-%(logged_in)s'>
+    To chat, please log in with:
+    <a href='/_authlite/facebook?state=%(page_path)s'>Facebook</a>
+  </div>
   <!-- div id='recording' class='logging-%(log_status)s'>
    <b class=rec>REC</b>
    <a href='%(log_url)s'>Conversation is %(log_not)s being recorded</a>.
@@ -109,7 +113,7 @@
   <div id='template-whois'>
    <p class='person _STAT_' mutiny_style=''>
     <img alt='' mutiny_avatar=''>
-    <b class=name>_NICK_</b> _INFO_
+    <a class=name href='_URL_'>_NICK_</a> _INFO_
    </p>
   </div>
 

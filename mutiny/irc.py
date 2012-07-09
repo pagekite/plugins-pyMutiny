@@ -22,6 +22,7 @@
 ################################################################################
 #
 # Python standard
+import hashlib
 import random
 import socket
 import threading
@@ -46,37 +47,65 @@ def get_timed_uid():
   COUNTER_LOCK.release()
   return uid
 
+def md5hex(data):
+  h1 = hashlib.md5()
+  h1.update(data)
+  return h1.hexdigest().lower()
+
 
 class IrcClient:
   """This is a bare-bones IRC client which logs on and ping/pongs."""
 
   DEBUG = False
 
+  username = 'mutiny'
   nickname = 'Mutiny_%d' % random.randint(0, 1000)
   fullname = "Mutiny: Pirate Meeting Gateway"
   low_nick = '<unset>'
+  profile = None
 
   def __init__(self):
     self.partial = ''
     self.uid = get_unique_id()
 
   def irc_nickname(self, nickname):
-    self.nickname = nickname
-    self.low_nick = nickname.lower()
+    self.nickname = str(nickname)
+    self.low_nick = str(nickname).lower()
     return self
 
   def irc_fullname(self, fullname):
-    self.fullname = fullname
+    self.fullname = str(fullname)
+    return self
+
+  def irc_username(self, username):
+    self.username = str(username)
     return self
 
   def irc_channels(self, channels):
-    self.channels = channels
+    self.channels = [str(c) for c in channels]
+    return self
+
+  def irc_profile(self, profile):
+    self.profile = profile
+
+    if 'nick' in profile:
+      self.irc_nickname(profile['nick'])
+
+    if 'uid' in profile:
+      self.irc_username(md5hex(str(profile['uid']))[:8])
+
+    user_info = ', '.join([profile.get('name', 'Anonymous'), profile.get('home', '')])
+    while user_info.endswith(', '):
+      user_info = user_info[:-2]
+    if user_info:
+      self.irc_fullname(user_info.encode('utf-8'))
+
     return self
 
   def process_connect(self, write_cb, fullname=None):
     """Process a new connection."""
-    write_cb(('NICK %s\r\nUSER mutiny x x :%s\r\n'
-              ) % (self.nickname, fullname or self.fullname))
+    write_cb(('NICK %s\r\nUSER %s x x :%s\r\n'
+              ) % (self.nickname, self.username, fullname or self.fullname))
 
   def process_data(self, data, write_cb):
     """Process data, presumably from a server."""
@@ -153,6 +182,22 @@ class IrcClient:
 
   def on_396(self, parts, write_cb): """Hidden host."""
 
+  def on_433(self, parts, write_cb):
+    """Nickname already in use, generate another one."""
+    if self.nickname.endswith('_'):
+      self.irc_nickname(self.nickname[:-1]+'-')
+    elif self.nickname.endswith('-'):
+      self.irc_nickname(self.nickname[:-1]+'1')
+    elif self.nickname.endswith('1'):
+      self.irc_nickname(self.nickname[:-1]+'2')
+    elif self.nickname.endswith('2'):
+      self.irc_nickname(self.nickname[:-1]+'3')
+    else:
+      self.irc_nickname(self.nickname+'_')
+    if len(self.nickname) > 15:
+      self.irc_nickname(self.nickname[:10]+self.nickname[-1])
+    write_cb('NICK %s\r\n' % self.nickname)
+
   def on_error(self, parts, write_cb):
     print 'ERROR: %s' % parts
     write_cb('QUIT\r\n')
@@ -195,6 +240,27 @@ class IrcLogger(IrcClient):
     self.whois_data = {}
     self.whois_cache = {}
     self.watchers = {}
+    self.users = {}
+
+  def irc_augment_whois(self, nickname):
+    try:
+      nickname = nickname.lower()
+      user = None
+      for uid, user in self.users.iteritems():
+        if user.low_nick == nickname:
+          break
+      if user:
+        return {
+          'realname': user.profile['name'].encode('utf-8'),
+          'userinfo': user.profile['home'].encode('utf-8'),
+          'avatar': user.profile['pic'].encode('utf-8'),
+          'url': user.profile['url'].encode('utf-8')
+        }
+    except (ValueError, KeyError):
+      pass
+    return {
+      'avatar': '/_skin/avatar_%s.jpg' % md5hex(nickname)[0]
+    }
 
   def irc_channel_log(self, channel):
     if channel not in self.channels:
@@ -301,6 +367,9 @@ class IrcLogger(IrcClient):
     nuh = '%s!%s' % (nickname, info['userhost'])
     info['uid'] = self.whois_cache.get(nuh, {}).get('uid') or get_timed_uid()
     self.whois_cache[nuh] = info
+
+    # Do we know this user, can we augment with profile data?
+    info.update(self.irc_augment_whois(nickname))
 
     if nickname.lower() != self.low_nick:
       for channel in info.get('channels', []):
