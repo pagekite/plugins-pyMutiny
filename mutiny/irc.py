@@ -63,10 +63,12 @@ class IrcClient:
   fullname = "Mutiny: Pirate Meeting Gateway"
   low_nick = '<unset>'
   profile = None
+  log_id = None
 
   def __init__(self):
     self.partial = ''
     self.uid = get_unique_id()
+    self.seen = time.time()
 
   def irc_nickname(self, nickname):
     self.nickname = str(nickname)
@@ -242,25 +244,30 @@ class IrcLogger(IrcClient):
     self.watchers = {}
     self.users = {}
 
-  def irc_augment_whois(self, nickname):
+  def irc_find_user(self, nickname=None, log_id=None):
     try:
       nickname = nickname.lower()
       user = None
       for uid, user in self.users.iteritems():
-        if user.low_nick == nickname:
-          break
-      if user:
-        return {
-          'realname': user.profile['name'].encode('utf-8'),
-          'userinfo': user.profile['home'].encode('utf-8'),
-          'avatar': user.profile['pic'].encode('utf-8'),
-          'url': user.profile['url'].encode('utf-8')
-        }
+        if ((nickname and (user.low_nick == nickname)) or
+            (log_id and (user.log_id == log_id))):
+          return user
     except (ValueError, KeyError):
       pass
-    return {
-      'avatar': '/_skin/avatar_%s.jpg' % md5hex(nickname)[0]
-    }
+    return None
+
+  def irc_augment_whois(self, nickname, user):
+    if user:
+      return {
+        'realname': user.profile['name'].encode('utf-8'),
+        'userinfo': user.profile['home'].encode('utf-8'),
+        'avatar': user.profile['pic'].encode('utf-8'),
+        'url': user.profile['url'].encode('utf-8')
+      }
+    else:
+      return {
+        'avatar': '/_skin/avatar_%s.jpg' % md5hex(nickname)[0]
+      }
 
   def irc_channel_log(self, channel):
     if channel not in self.channels:
@@ -369,7 +376,12 @@ class IrcLogger(IrcClient):
     self.whois_cache[nuh] = info
 
     # Do we know this user, can we augment with profile data?
-    info.update(self.irc_augment_whois(nickname))
+    user = self.irc_find_user(nickname, info['uid'])
+    info.update(self.irc_augment_whois(nickname, user))
+
+    # Write back the log ID
+    if user:
+      user.log_id = info['uid']
 
     if nickname.lower() != self.low_nick:
       for channel in info.get('channels', []):

@@ -186,10 +186,31 @@ class Mutiny():
     code = 200
     data = None
 
+    # Clear any expired cookies, update others, record credentials
+    credentials = {}
+    for c, v in cookies.items():
+      try:
+        prefix, network = c.split('-', 1)
+        muid = v.value.split(',')[0]
+        if (not network in self.networks or
+            muid not in self.networks[network].users):
+          req.setCookie(c, '', delete=True)
+        else:
+          log_id = v.value.split(',', 1)[1]
+          user = self.networks[network].users[muid]
+          if log_id != user.log_id:
+            req.setCookie(c, '%s,%s' % (muid, user.log_id))
+          else:
+            user.seen = time.time()
+            credentials[network] = user
+      except (ValueError, KeyError):
+        pass
+
     # Shared values for rendering templates
     page_url = req.absolute_url()
     page_prefix = '/'.join(page_url.split('/', 4)[:3])
     host = req.header('Host', 'unknown').lower()
+    template = ''
     page = {
       'templates': os.path.join(self.work_dir, 'html'),
       'version': VERSION,
@@ -210,7 +231,7 @@ class Mutiny():
           })
 
         elif path.startswith('_api/v1/'):
-          return self.handleApiRequest(req, path, qs, posted, cookies)
+          return self.handleApiRequest(req, path, qs, posted, credentials)
 
         elif path.startswith('join/'):
           template, page = self.prepareChannelPage(path, page)
@@ -229,6 +250,12 @@ class Mutiny():
           # FIXME: Have an explicit search-engine policy in settings?
           raise NotFoundException('FIXME')
 
+        else:
+          raise NotFoundException()
+
+      elif req.command == 'POST':
+        if path.startswith('_api/v1/'):
+          return self.handleApiRequest(req, path, qs, posted, credentials)
         else:
           raise NotFoundException()
 
@@ -318,10 +345,10 @@ class Mutiny():
     self.connect_client(network, client)
 
     # Finally, set a cookie with their client's UID.
+    req.setCookie('muid-%s' % network, '%s,pending' % client.uid)
 
-    print '%s' % json.dumps(profile, indent=2)
-    return req.sendResponse('<h1>Welcome!</h1>', code=302, msg='Moved',
-                            header_list=[('Location', page_prefix + state)])
+    print 'Logged in: %s' % json.dumps(profile, indent=2)
+    return req.sendRedirect(page_prefix + state)
 
   def prepareChannelPage(self, path, page):
     network, channel = self.get_channel_from_path(path)
@@ -350,19 +377,20 @@ class Mutiny():
     ('Access-Control-Allow-Headers', 'content-length, authorization')
   ]
 
-  def handleApiRequest(self, req, path, qs, posted, cookies):
+  def handleApiRequest(self, req, path, qs, posted, credentials):
     api, v1, network, channel = path.split('/')
     headers = self.CORS_HEADERS[:]
-    mime_type, data = getattr(self, 'api_%s' % qs['a'][0]
-                              )(network, channel, qs, posted, cookies)
+    method = (posted or qs).get('a', qs.get('a'))[0]
+    mime_type, data = getattr(self, 'api_%s' % method
+                              )(network, self.fixup_channel(channel),
+                                req, qs, posted, credentials)
     return req.sendResponse(data,
                             mimetype=mime_type,
                             header_list=headers, cachectrl='no-cache')
 
-  def api_log(self, network, channel, qs, posted, cookies):
+  def api_log(self, network, channel, req, qs, posted, credentials):
     # FIXME: Choose between bots based on network
 
-    channel = self.fixup_channel(channel)
     grep = qs.get('grep', [''])[0]
     after = qs.get('seen', [None])[0]
     limit = int(qs.get('limit', [0])[0])
@@ -396,7 +424,23 @@ class Mutiny():
     if limit:
       data = data[-limit:]
 
-    return 'application/json', json.dumps(data, indent=1)
+    return 'application/json', json.dumps(data)
+
+  def api_logout(self, network, channel, req, qs, posted, credentials):
+    user = credentials[network]
+    del self.networks[network].users[user.uid]
+    req.setCookie('muid-%s' % network, '', delete=True)
+
+    sockfd = self.event_loop.fds_by_uid[user.uid]
+    self.event_loop.sendall(sockfd, 'QUIT :Logged off\r\n')
+    return 'application/json', json.dumps(['ok'])
+
+  def api_say(self, network, channel, req, qs, posted, credentials):
+    sockfd = self.event_loop.fds_by_uid[credentials[network].uid]
+    privmsg = 'PRIVMSG %s :%s\r\n' % (channel,
+                                      posted['msg'][0].decode('utf-8'))
+    self.event_loop.sendall(sockfd, privmsg.encode('utf-8'))
+    return 'application/json', json.dumps(['ok'])
 
 
 def Configuration():

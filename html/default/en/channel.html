@@ -10,7 +10,6 @@
    var mutiny_network = '%(network)s';
    var mutiny_channel = '%(channel)s';
    var mutiny_host = '';
-   var mutiny_uid = ''; /* '_FIXME_(uid)s'; */
  </script>
 </head><body onLoad="mutiny.main();">
  <noscript><h1 class='error'>SORRY!  This page requires JavaScript.</h1></noscript>
@@ -26,6 +25,9 @@
    <input class=privmsg type=text name='privmsg'
     ><input class=send type=submit value='Ahoy!'>
   </form>
+  <div id='loginpending' class='display-%(logged_in)s'>
+    Waiting for login to complete ...
+  </div>
   <div id='pleaselogin' class='nodisplay-%(logged_in)s'>
     To chat, please log in with:
     <a href='/_authlite/facebook?state=%(page_path)s'>Facebook</a>
@@ -37,9 +39,12 @@
  </div>
 
  <div id='meta'>
-   <!-- h2>Your presence:</h2>
-   <div id='me'>
-   </div -->
+   <div id='presence' class='display-%(logged_in)s'>
+     <a id=logout href='javascript:mutiny.logout();'>log out</a>
+     <h2>Your presence:</h2>
+     <div id='me'>
+     </div>
+   </div>
 
    <h2>People:</h2>
    <div id='people'>

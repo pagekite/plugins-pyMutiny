@@ -58,6 +58,12 @@ h1, h2, h3, h4 {
 .nodisplay-yes {
   display: none;
 }
+#input.sending {
+  background: #ff0;
+}
+#input.error {
+  background: #f00;
+}
 #input .privmsg {
   margin: 0;
   width: 85%;
@@ -66,8 +72,11 @@ h1, h2, h3, h4 {
   margin: 0;
   width: 14%;
 }
-#pleaselogin {
+#pleaselogin, #loginpending {
   text-align: center;
+}
+#logout {
+  float: right;
 }
 #recording {
   padding: 0px;

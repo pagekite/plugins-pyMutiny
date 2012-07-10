@@ -47,7 +47,8 @@ class SelectLoop(threading.Thread):
   def __init__(self):
     threading.Thread.__init__(self)
     self.keep_running = True
-    self.connections = {}
+    self.conns_by_fd = {}
+    self.fds_by_uid = {}
     self.sleepers = []
 
   def stop(self):
@@ -56,7 +57,16 @@ class SelectLoop(threading.Thread):
       self.awaken_sleeper(sleeper)
 
   def add(self, fd, owner):
-    self.connections[fd] = owner
+    self.fds_by_uid[owner.uid] = fd
+    self.conns_by_fd[fd] = owner
+
+  def remove_owner(self, owner):
+    del self.conns_by_fd[self.fds_by_uid[owner.uid]]
+    del self.fds_by_uid[owner.uid]
+
+  def remove_fd(self, fd):
+    del self.fds_by_uid[self.conns_by_fd[fd].uid]
+    del self.conns_by_fd[fd]
 
   def add_sleeper(self, waketime, condition, info):
     if not self.keep_running:
@@ -94,26 +104,26 @@ class SelectLoop(threading.Thread):
   def run(self):
     d = 0.1
     while self.keep_running:
-      ready = select.select(self.connections.keys(), [], [], d)[0]
+      ready = select.select(self.conns_by_fd.keys(), [], [], d)[0]
       for fd in ready:
         try:
           data = fd.recv(32*1024)
           if self.DEBUG:
             print '<<< %s' % data.encode('string_escape')
-          self.connections[fd].process_data(data,
+          self.conns_by_fd[fd].process_data(data,
                                             lambda d: self.sendall(fd, d))
           if data == '':
-            del self.connections[fd]
+            self.remove_fd(fd)
         except SSL.WantReadError:
           pass
         except IOError, err:
           if err.errno not in self.HARMLESS_ERRNOS:
-            del self.connections[fd]
+            self.remove_fd(fd)
         except socket.error, (errno, msg):
           if errno not in self.HARMLESS_ERRNOS:
-            del self.connections[fd]
+            self.remove_fd(fd)
         except (SSL.Error, SSL.ZeroReturnError, SSL.SysCallError):
-          del self.connections[fd]
+          self.remove_fd(fd)
 
       if ready:
         d = 0.1
