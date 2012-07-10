@@ -4,7 +4,7 @@
 #
 # This is an IRC-to-WWW gateway designed to help Pirates have Meetings.
 #
-VERSION = 'v0.0'
+VERSION = 'v0.1'
 #
 ################################################################################
 #
