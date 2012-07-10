@@ -17,6 +17,15 @@ h1, h2, h3, h4 {
   float: left;
   max-width: 300px;
 }
+#footer {
+  clear: both;
+  text-align: center;
+  font-size: 12px;
+  font-style: italic;
+}
+#about {
+  margin: 0 40px;
+}
 
 #disconnected {
   position: absolute;
