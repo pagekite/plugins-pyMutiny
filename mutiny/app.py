@@ -24,7 +24,6 @@ VERSION = 'v0.1'
 ################################################################################
 #
 # Python standard
-import json
 import os
 import random
 import sys
@@ -347,7 +346,7 @@ class Mutiny():
     # Finally, set a cookie with their client's UID.
     req.setCookie('muid-%s' % network, '%s,pending' % client.uid)
 
-    print 'Logged in: %s' % json.dumps(profile, indent=2)
+    print 'Logged in: %s' % HttpdLite.json_encode(profile, indent=2)
     return req.sendRedirect(page_prefix + state)
 
   def prepareChannelPage(self, path, page):
@@ -424,7 +423,7 @@ class Mutiny():
     if limit:
       data = data[-limit:]
 
-    return 'application/json', json.dumps(data)
+    return 'application/json', HttpdLite.json_encode(data)
 
   def api_logout(self, network, channel, req, qs, posted, credentials):
     user = credentials[network]
@@ -433,14 +432,14 @@ class Mutiny():
 
     sockfd = self.event_loop.fds_by_uid[user.uid]
     self.event_loop.sendall(sockfd, 'QUIT :Logged off\r\n')
-    return 'application/json', json.dumps(['ok'])
+    return 'application/json', HttpdLite.json_encode(['ok'])
 
   def api_say(self, network, channel, req, qs, posted, credentials):
     sockfd = self.event_loop.fds_by_uid[credentials[network].uid]
     privmsg = 'PRIVMSG %s :%s\r\n' % (channel,
                                       posted['msg'][0].decode('utf-8'))
     self.event_loop.sendall(sockfd, privmsg.encode('utf-8'))
-    return 'application/json', json.dumps(['ok'])
+    return 'application/json', HttpdLite.json_encode(['ok'])
 
 
 def Configuration():
@@ -469,7 +468,7 @@ def Configuration():
 
   try:
     fd = open(os.path.join(config['work_dir'], 'config.json'), 'rb')
-    config.update(json.load(fd))
+    config.update(HttpdLite.json_decode(fd.read()))
   except ValueError, e:
     print 'Failed to parse config: %s' % e
     sys.exit(1)
@@ -513,7 +512,7 @@ def Configuration():
     for channel in channels:
       channels[channel]['access'] = arg
 
-  print 'Config is: %s' % json.dumps(config, indent=2)
+  print 'Config is: %s' % HttpdLite.json_encode(config, indent=2)
   return config
 
 
