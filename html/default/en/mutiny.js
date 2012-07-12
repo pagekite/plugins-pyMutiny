@@ -108,14 +108,21 @@ mutiny = {
                   mutiny.render_text(/_UID_/g, info.uid,
                     mutiny.render_text(/_STAT_/g, info.stat,
                       mutiny.render_text(/_TEXT_/g, info.text, tpl)))));
-        if (oi.html()) {
+        if (oi.html() && (info.event != 'whois')) {
           oi.html(tpl);
           mutiny.apply_filters(oi.children());
-        } else {
+        }
+        else {
+          oi.remove();
           var td = document.getElementById(target);
           var scroll = (td.scrollHeight - td.scrollTop == mutiny.scroll_diff);
           var jqObj = $('<span class="wrap"/>').html(tpl).attr('id', dom_id);
-          $('#'+target).append(jqObj);
+          if (info.event == 'whois') {
+            $('#'+target).prepend(jqObj);
+          }
+          else {
+            $('#'+target).append(jqObj);
+          }
           if (target == 'channel') {
             mutiny.apply_filters(jqObj.children());
             if (scroll || !mutiny.scroll_diff) {
