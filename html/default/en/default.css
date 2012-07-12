@@ -26,6 +26,9 @@ h1, h2, h3, h4 {
 #about {
   margin: 0 40px;
 }
+span.wrap {
+  margin: 0; padding: 0; border: 0;
+}
 
 #disconnected {
   position: absolute;
@@ -139,6 +142,12 @@ h1, h2, h3, h4 {
 }
 .person {
   overflow: hidden;
+}
+.person.gone {
+  opacity: 0.5;
+}
+.person.gone .name {
+  text-decoration: line-through;
 }
 .person .name {
   display: block;

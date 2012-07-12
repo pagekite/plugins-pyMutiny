@@ -82,10 +82,10 @@ mutiny = {
       var target = 'channel';
 
       if (info.update) {
-        iid = dom_id = info.update;
+        dom_id = info.update;
       }
       if (info.event == 'whois') {
-        iid = dom_id = info.uid;
+        dom_id = info.uid;
         if (info.uid == log_id) {
           target = 'me';
         }
@@ -93,28 +93,31 @@ mutiny = {
           target = 'people';
         }
         mutiny.avatars[info.uid] = info.avatar;
+        var in_channel = (info.channels.indexOf(mutiny_channel) >= 0);
         tpl = mutiny.render_text(/_INFO_/g, info.userinfo,
-                tpl.replace(/_URL_/g, info.url || ''));
+                 tpl.replace(/_URL_/g, info.url || '')
+                    .replace(/_HERE_/g, in_channel ? 'here' : 'gone'));
       }
       var oi = $('#'+dom_id);
       if (info.event == 'delete') {
         $('#'+info.target).remove();
       }
       else if (tpl) {
-        tpl = mutiny.render_time(iid,
+        tpl = mutiny.render_time(dom_id,
                 mutiny.render_nick(info.nick || '', info.uid || '',
                   mutiny.render_text(/_UID_/g, info.uid,
                     mutiny.render_text(/_STAT_/g, info.stat,
                       mutiny.render_text(/_TEXT_/g, info.text, tpl)))));
         if (oi.html()) {
-          oi.html($(tpl).html());
+          oi.html(tpl);
+          mutiny.apply_filters(oi.children());
         } else {
           var td = document.getElementById(target);
           var scroll = (td.scrollHeight - td.scrollTop == mutiny.scroll_diff);
-          var jqObj = $(tpl).attr('id', dom_id);
+          var jqObj = $('<span class="wrap"/>').html(tpl).attr('id', dom_id);
           $('#'+target).append(jqObj);
           if (target == 'channel') {
-            mutiny.apply_filters(jqObj);
+            mutiny.apply_filters(jqObj.children());
             if (scroll || !mutiny.scroll_diff) {
               td.scrollTop = td.scrollHeight;
               mutiny.scroll_diff = (td.scrollHeight - td.scrollTop);
@@ -213,6 +216,7 @@ mutiny = {
       $(jqObj).filter('.part').hide();
       $(jqObj).filter('.join').hide();
       $(jqObj).filter('.nick').hide();
+      $(jqObj).filter('.quit').hide();
     }
     else if (filter == 'voice') {
       $(jqObj).filter(':not(.voice)').hide();

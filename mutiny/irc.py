@@ -172,6 +172,7 @@ class IrcClient:
   def on_265(self, parts, write_cb): """Local user stats, current/max."""
   def on_266(self, parts, write_cb): """Global user stats, current/max."""
   def on_312(self, parts, write_cb): """User's server info."""
+  def on_317(self, parts, write_cb): """Seconds idle, signon time."""
   def on_318(self, parts, write_cb): """End of /WHOIS list."""
   def on_332(self, parts, write_cb): """Channel topic."""
   def on_333(self, parts, write_cb): """Channel topic setter."""
@@ -341,6 +342,26 @@ class IrcLogger(IrcClient):
         info = n_info
     return info
 
+  def irc_update_whois(self, nuh, update={}, depart=None, new_nick=None):
+    nickname, userhost = nuh.split('!', 1)
+    whois = self.irc_cached_whois(nickname, userhost)
+    channels = [c for c in whois.get('channels', []) if c in self.channels]
+    if whois['uid']:
+      if new_nick:
+        whois['nick'] = new_nick
+        self.whois_cache['%s!%s' % (new_nick, userhost)] = whois
+        if nuh in self.whois_cache:
+          del self.whois_cache[nuh]
+      whois.update(update)
+      if depart and 'channels' in whois:
+        whois['channels'].remove(depart)
+      for channel in channels:
+        if whois:
+          self.irc_channel_log_append(channel, [get_timed_uid(), whois])
+    return whois, channels
+
+  ### Protocol callbacks follow ###
+
   def on_353(self, parts, write_cb):
     """We want more info about anyone listed in /NAMES."""
     self.want_whois.extend(parts[5].replace('@', '')
@@ -376,7 +397,8 @@ class IrcLogger(IrcClient):
     del self.whois_data[nickname]
 
     nuh = '%s!%s' % (nickname, info['userhost'])
-    info['uid'] = self.whois_cache.get(nuh, {}).get('uid') or get_timed_uid()
+    new_uid = get_timed_uid()
+    info['uid'] = self.whois_cache.get(nuh, {}).get('uid', new_uid)
     self.whois_cache[nuh] = info
 
     # Do we know this user, can we augment with profile data?
@@ -390,7 +412,7 @@ class IrcLogger(IrcClient):
     if nickname.lower() != self.low_nick:
       for channel in info.get('channels', []):
         if channel in self.channels:
-          self.irc_channel_log_append(channel, [info['uid'], info])
+          self.irc_channel_log_append(channel, [new_uid, info])
 
     if self.want_whois:
       self.irc_whois(self.want_whois.pop(0), write_cb)
@@ -438,37 +460,26 @@ class IrcLogger(IrcClient):
       self.irc_whois(nickname, write_cb)
 
   def on_nick(self, parts, write_cb):
-    nickname, userhost = parts[0].split('!', 1)
-    new_nick = parts[2]
-
-    whois = self.irc_cached_whois(nickname, userhost)
-    if whois['uid']:
-      whois['nick'] = new_nick
-      self.whois_cache['%s!%s' % (new_nick, userhost)] = whois
-      if parts[0] in self.whois_cache:
-        del self.whois_cache[parts[0]]
-    else:
-      whois = None
-
-    for channel in whois['channels']:
-      if channel in self.channels:
-        if whois:
-          self.irc_channel_log_append(channel, [get_timed_uid(), whois])
-        self.irc_channel_log_append(channel, [get_timed_uid(), {
-          'event': 'nick',
-          'nick': nickname,
-          'text': new_nick,
-          'uid': whois.get('uid')
-        }])
+    nuh, new_nick = parts[0], parts[2]
+    nickname, userhost = nuh.split('!', 1)
+    whois, channels = self.irc_update_whois(nuh, new_nick=new_nick)
+    for channel in channels:
+      self.irc_channel_log_append(channel, [get_timed_uid(), {
+        'event': 'nick',
+        'nick': nickname,
+        'text': new_nick,
+        'uid': whois.get('uid')
+      }])
 
   def on_part(self, parts, write_cb):
-    nickname, userhost = parts[0].split('!', 1)
-    self.irc_channel_log_append(parts[2], [get_timed_uid(), {
+    nuh, channel = parts[0], parts[2]
+    nickname, userhost = nuh.split('!', 1)
+    whois, channels = self.irc_update_whois(nuh, depart=channel)
+    self.irc_channel_log_append(channel, [get_timed_uid(), {
       'event': 'part',
       'nick': nickname,
       'uid': self.irc_cached_whois(nickname, userhost).get('uid')
     }])
-    # FIXME: Update WHOIS status to reflect gone-ness.
 
   def on_privmsg_channel(self, parts, write_cb):
     nickname, userhost = parts[0].split('!', 1)
@@ -480,6 +491,18 @@ class IrcLogger(IrcClient):
       'uid': self.irc_cached_whois(nickname, userhost).get('uid')
     }])
 
+  def on_quit(self, parts, write_cb):
+    nuh, quit_msg = parts[0], parts[2]
+    nickname, userhost = nuh.split('!', 1)
+    whois, channels = self.irc_update_whois(nuh, update={'channels': []})
+    for channel in channels:
+      self.irc_channel_log_append(channel, [get_timed_uid(), {
+        'event': 'quit',
+        'nick': nickname,
+        'text': quit_msg,
+        'uid': whois.get('uid')
+      }])
+
   def on_topic(self, parts, write_cb):
     nickname, userhost = parts[0].split('!', 1)
     self.irc_channel_log_append(parts[2], [get_timed_uid(), {
@@ -488,6 +511,7 @@ class IrcLogger(IrcClient):
       'nick': nickname,
       'uid': self.irc_cached_whois(nickname, userhost).get('uid')
     }])
+
 
 
 class IrcBot(IrcLogger):
