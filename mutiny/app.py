@@ -101,6 +101,7 @@ class Mutiny():
       server_spec = self.config['irc'][network]['servers'][0]
     proto, server, port = self.parse_spec(server_spec)
     print 'Connecting to %-15s %s://%s:%d/' % (network, proto, server, port)
+    client.server = server
     Connect(proto, server, port, *self.callbacks(network, client)).start()
 
   def stop(self):
@@ -357,6 +358,7 @@ class Mutiny():
       page.update({
         'network': network,
         'network_desc': self.config_irc[network].get('description', network),
+        'network_server': self.networks[network].server,
         'channel': channel,
         'channel_desc': info.get('description', channel),
         'channel_access': info.get('access', 'open').replace(',', ' '),

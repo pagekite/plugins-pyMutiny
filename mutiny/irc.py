@@ -58,6 +58,7 @@ class IrcClient:
 
   DEBUG = False
 
+  server = None
   username = 'mutiny'
   nickname = 'Mutiny_%d' % random.randint(0, 1000)
   fullname = "Mutiny: Pirate Meeting Gateway"
@@ -170,6 +171,7 @@ class IrcClient:
   def on_255(self, parts, write_cb): """Clients and servers."""
   def on_265(self, parts, write_cb): """Local user stats, current/max."""
   def on_266(self, parts, write_cb): """Global user stats, current/max."""
+  def on_312(self, parts, write_cb): """User's server info."""
   def on_318(self, parts, write_cb): """End of /WHOIS list."""
   def on_332(self, parts, write_cb): """Channel topic."""
   def on_333(self, parts, write_cb): """Channel topic setter."""
@@ -199,6 +201,8 @@ class IrcClient:
     if len(self.nickname) > 15:
       self.irc_nickname(self.nickname[:10]+self.nickname[-1])
     write_cb('NICK %s\r\n' % self.nickname)
+
+  def on_671(self, parts, write_cb): """Is using a secure connection."""
 
   def on_error(self, parts, write_cb):
     print 'ERROR: %s' % parts

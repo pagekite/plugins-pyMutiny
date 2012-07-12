@@ -29,8 +29,16 @@
     Waiting for login to complete ...
   </div>
   <div id='pleaselogin' class='nodisplay-%(logged_in)s'>
+   <p>
     To chat, please log in with:
     <a href='/_authlite/facebook?state=%(page_path)s'>Facebook</a>
+   </p>
+   <p class='disclaimer'>
+    <b>Note:</b> This will establish a proxied connection to the IRC server
+    <b>%(network_server)s</b>.  If you prefer, you can connect directly to
+    %(network)s using a standard IRC client, although some channels may restrict
+    access.
+   </p>
   </div>
   <!-- div id='recording' class='logging-%(log_status)s'>
    <b class=rec>REC</b>
