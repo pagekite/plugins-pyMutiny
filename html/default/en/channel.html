@@ -5,13 +5,11 @@
  <link rel="stylesheet" media="screen, screen" href="/_skin/default.css" type="text/css">
  <script language="javascript" src="/_skin/jquery-1.7.2.min.js.gz"></script>
  <script language="javascript" src="/_skin/mutiny.js"></script>
- <title>%(channel)s (mutiny %(version)s)</title>
- <script language='javascript'>
-   var mutiny_network = '%(network)s';
-   var mutiny_channel = '%(channel)s';
-   var mutiny_host = '';
+ <script language="javascript">
+   var mutiny = Mutiny('', '%(network)s', '%(channel)s', 'mutiny');
  </script>
-</head><body onLoad="mutiny.main();">
+ <title>%(channel)s (mutiny %(version)s)</title>
+</head><body onLoad="mutiny.main($('body'));">
  <noscript><h1 class='error'>SORRY!  This page requires JavaScript.</h1></noscript>
 
  <div id='main'>
@@ -48,7 +46,7 @@
 
  <div id='meta'>
    <div id='presence' class='display-%(logged_in)s'>
-     <a id=logout href='javascript:mutiny.logout();'>log out</a>
+     <a id=logout href='#logout'>log out</a>
      <h2>You are:</h2>
      <div id='me'>
      </div>
