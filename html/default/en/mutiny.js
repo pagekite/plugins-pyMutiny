@@ -101,6 +101,21 @@ function Mutiny(mutiny_host, mutiny_network, mutiny_channel, global) {
                    tpl.replace(/_URL_/g, info.url || '')
                       .replace(/_HERE_/g, in_channel ? 'here' : 'gone'));
         }
+        else if (info.event == 'msg') {
+          var last_idx = mutiny.channel_log.length - 1;
+          while ((last_idx > 0) &&
+                 (mutiny.channel_log[last_idx-1][1].event == info.event) &&
+                 (mutiny.channel_log[last_idx-1][1].uid == info.uid))
+          {
+            last_idx -= 1;
+          }
+          if (last_idx < mutiny.channel_log.length - 1) {
+            tpl = dom.find('#template-msg-more').html();
+            target = 'channel #'+mutiny.channel_log[last_idx][1].dom_id+' p';
+          }
+        }
+
+        info.dom_id = dom_id;
         var oi = dom.find('#'+dom_id);
         if (info.event == 'delete') {
           dom.find('#'+info.target).remove();
@@ -117,20 +132,20 @@ function Mutiny(mutiny_host, mutiny_network, mutiny_channel, global) {
           }
           else {
             oi.remove();
-            var td = document.getElementById(target);
-            var scroll = (td.scrollHeight - td.scrollTop == mutiny.scroll_diff);
             var jqObj = $('<span class="wrap"/>').html(tpl).attr('id', dom_id);
             if (info.event == 'whois') {
               dom.find('#'+target).prepend(jqObj);
             }
             else {
+              var td = document.getElementById(target.split(' ')[0]);
+              var scroll = (td.scrollHeight - td.scrollTop == mutiny.scroll_diff);
               dom.find('#'+target).append(jqObj);
-            }
-            if (target == 'channel') {
-              mutiny.apply_filters(jqObj.children());
-              if (scroll || !mutiny.scroll_diff) {
-                td.scrollTop = td.scrollHeight;
-                mutiny.scroll_diff = (td.scrollHeight - td.scrollTop);
+              if (target.split(' ')[0] == 'channel') {
+                mutiny.apply_filters(jqObj.children());
+                if (scroll || !mutiny.scroll_diff) {
+                  td.scrollTop = td.scrollHeight;
+                  mutiny.scroll_diff = (td.scrollHeight - td.scrollTop);
+                }
               }
             }
           }

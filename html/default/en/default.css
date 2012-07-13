@@ -140,6 +140,12 @@ span.wrap {
   margin: 0 0 10px 10px;
   font-size: 0.8em;
 }
+.comment-more {
+  display: block;
+}
+.comment-more .name {
+  opacity: 0;
+}
 .person {
   overflow: hidden;
 }

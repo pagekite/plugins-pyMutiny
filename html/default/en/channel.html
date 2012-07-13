@@ -74,14 +74,6 @@
 
  <!-- Templates used by JavaScript --><div style='display: none;'>
 
-  <div id='template-join'>
-   <p class='mutiny_log join _UID_ _STAT_' mutiny_style=''>
-    <tt class=time>_HH_MM_</tt>
-    <img alt='' mutiny_avatar=''>
-    <b class=name>_NICK_</b> joined
-   </p>
-  </div>
-
   <div id='template-msg'>
    <p class='mutiny_log comment _UID_' mutiny_style=''>
     <tt class=time>_HH_MM_</tt>
@@ -89,6 +81,13 @@
     <b class=name>_NICK_:</b>
     _TEXT_
    </p>
+  </div>
+
+  <div id='template-msg-more'>
+   <span class='comment-more'>
+    <b class=name>_NICK_:</b>
+     _TEXT_
+   </span>
   </div>
 
   <div id='template-act'>
@@ -107,6 +106,14 @@
    </p>
   </div>
 
+  <div id='template-join'>
+   <p class='mutiny_log join _UID_ _STAT_' mutiny_style=''>
+    <tt class=time>_HH_MM_</tt>
+    <img alt='' mutiny_avatar=''>
+    <b class=name>_NICK_</b> joined
+   </p>
+  </div>
+
   <div id='template-part'>
    <p class='mutiny_log part _UID_ _STAT_' mutiny_style=''>
     <tt class=time>_HH_MM_</tt>
@@ -115,19 +122,19 @@
    </p>
   </div>
 
-  <div id='template-quit'>
-   <p class='mutiny_log part _UID_ _STAT_' mutiny_style=''>
-    <tt class=time>_HH_MM_</tt>
-    <img alt='' mutiny_avatar=''>
-    <b class=name>_NICK_</b> quit: _TEXT_
-   </p>
-  </div>
-
   <div id='template-nick'>
    <p class='mutiny_log nick _UID_ _STAT_' mutiny_style=''>
     <tt class=time>_HH_MM_</tt>
     <img alt='' mutiny_avatar=''>
     <b class=name>_NICK_</b> is now <b class=name>_TEXT_</b>
+   </p>
+  </div>
+
+  <div id='template-quit'>
+   <p class='mutiny_log part _UID_ _STAT_' mutiny_style=''>
+    <tt class=time>_HH_MM_</tt>
+    <img alt='' mutiny_avatar=''>
+    <b class=name>_NICK_</b> quit: _TEXT_
    </p>
   </div>
 
