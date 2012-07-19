@@ -430,7 +430,7 @@ class IrcLogger(IrcClient):
   def on_366(self, parts, write_cb):
     """On end of /NAMES, run /MODE and /WHOIS to gather channel info."""
     channel = parts[3]
-    write_cb('MODE %s\r\nTOPIC %s\r\n' % (channel, channel))
+    write_cb('MODE %s\r\n' % channel)
     if self.want_whois:
       self.irc_whois(self.want_whois.pop(0), write_cb)
 
