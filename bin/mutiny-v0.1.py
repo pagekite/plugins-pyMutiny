@@ -2469,6 +2469,10 @@ class Mutiny():
         rules.get('key', False) or
         rules.get('invite_only', False)):
       if not (user and channel in user['channels']):
+        # This will hide the channel key and other parameters
+        for r in rules:
+          if rules[r]:
+            rules[r] = True
         rules['event'] = 'pleasejoin'
         return 'application/json', HttpdLite.json_encode([
           [get_timed_uid(), rules]
