@@ -2444,7 +2444,7 @@ class Mutiny():
     if muid == 'anon':
       user = None
     else:
-      user = self.networks[network].users[muid]
+      user = self.networks[network].users[muid.split(',')[0]]
     headers = self.CORS_HEADERS[:]
     method = (posted or qs).get('a', qs.get('a'))[0]
     mime_type, data = getattr(self, 'api_%s' % method
