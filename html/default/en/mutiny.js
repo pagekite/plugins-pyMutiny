@@ -77,7 +77,12 @@ function Mutiny(mutiny_host, mutiny_network, mutiny_uids, mutiny_channel,
       /* Schedule refresh first, in case we crash and burn.
        * Introduce some jitter to spread load a bit. */
       var refresh = Math.round((0.5 + Math.random()) * mutiny.refresh);
-      setTimeout(global+'.load_data('+refresh+');', Math.random() * 100);
+      var delay = Math.random() * 100;
+      if ((data.length > 0) && data[0][1].event == 'pleasejoin') {
+        delay = 5000;
+        data = [];
+      }
+      setTimeout(global+'.load_data('+refresh+');', delay);
 
       for (idx in data) {
         mutiny.channel_log.push(data[idx]);

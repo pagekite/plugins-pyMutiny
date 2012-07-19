@@ -37,7 +37,7 @@ import sockschain
 import HttpdLite
 # Stuff from Mutiny
 from mutiny.io import SelectLoop, SelectAborted, Connect
-from mutiny.irc import IrcClient, IrcBot
+from mutiny.irc import IrcClient, IrcBot, get_timed_uid
 
 
 DEFAULT_PATH = os.path.expanduser('~/.mutiny')
@@ -56,6 +56,10 @@ def html_escape(text):
 
 class NotFoundException(Exception):
   """Thrown when we want to render a 404."""
+  pass
+
+class AccessDeniedException(Exception):
+  """Thrown when we want to render a 401."""
   pass
 
 
@@ -402,7 +406,6 @@ class Mutiny():
 
   def api_log(self, network, user, channel, req, qs, posted):
     # FIXME: Choose between bots based on network
-
     grep = qs.get('grep', [''])[0]
     after = qs.get('seen', [None])[0]
     limit = int(qs.get('limit', [0])[0])
@@ -410,10 +413,20 @@ class Mutiny():
     if timeout:
       timeout += time.time()
 
+    bot = self.networks[network]
+    rules = bot.irc_parsed_mode(channel)
+    if (rules.get('secret', False) or
+        rules.get('key', False) or
+        rules.get('invite_only', False)):
+      if not (user and channel in user['channels']):
+        rules['event'] = 'pleasejoin'
+        return 'application/json', HttpdLite.json_encode([
+          [get_timed_uid(), rules]
+        ])
+
     data = []
     try:
       while not data:
-        bot = self.networks[network]
         data = bot.irc_channel_log(channel)
         if after or grep:
           data = [x for x in data if (x[0] > after) and

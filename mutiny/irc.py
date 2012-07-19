@@ -138,6 +138,9 @@ class IrcClient:
       return None
     try:
       return callback(parts, write_cb)
+    except AttributeError:
+      print '%s' % parts
+      return None
     except:
       print '%s' % traceback.format_exc()
       return None
@@ -246,6 +249,7 @@ class IrcLogger(IrcClient):
     self.want_whois = []
     self.whois_data = {}
     self.whois_cache = {}
+    self.channel_mode = {}
     self.watchers = {}
     self.users = {}
 
@@ -360,7 +364,63 @@ class IrcLogger(IrcClient):
           self.irc_channel_log_append(channel, [get_timed_uid(), whois])
     return whois, channels
 
+  def irc_parsed_mode(self, channel):
+    mode_string, log_id, fixme = self.channel_mode.get(channel, ['ns', 0, None])
+    mode_words = mode_string.split(' ')
+    mode = mode_words.pop(0)
+    info = {
+      'event': 'mode',
+      'log_id': log_id,
+      'raw_mode': mode_string
+    }
+    for m in mode:
+      if m == 'a':
+        info['anonymous'] = True
+      elif m == 'b':
+        info['bans'] = info.get('bans', []) + [mode_words.pop(0)]
+      elif m == 'i':
+        info['invite_only'] = True
+      elif m == 'I':
+        info['invite_mask'] = info.get('invite_mask', []) + [mode_words.pop(0)]
+      elif m == 'k':
+        info['key'] = mode_words.pop(0)
+      elif m == 'l':
+        info['limit'] = mode_words.pop(0)
+      elif m == 'm':
+        info['moderated'] = True
+      elif m == 'n':
+        info['must_join'] = True
+      elif m == 'q':
+        info['quiet'] = True
+      elif m == 's':
+        info['secret'] = True
+      elif m == 't':
+        info['topic_locked'] = True
+    return info
+
   ### Protocol callbacks follow ###
+
+  def on_324(self, parts, write_cb):
+    """Channel mode information."""
+    channel, mode = parts[3], parts[4]
+    log_id = get_timed_uid()
+    self.channel_mode[channel] = [mode, log_id, None]
+    self.irc_channel_log_append(channel,
+                                [log_id, self.irc_parsed_mode(channel)])
+
+  def on_mode(self, parts, write_cb):
+    by_nuh, channel, mode = parts[0], parts[2], parts[3]
+    if '!' in by_nuh:
+      nickname, userhost = by_nuh.split('!', 1)
+      self.irc_channel_log_append(channel, [get_timed_uid(), {
+        'event': 'mode',
+        'mode': mode,
+        'nick': nickname,
+        'uid': self.irc_cached_whois(nickname, userhost).get('uid')
+      }])
+      write_cb('MODE %s\r\n' % channel)
+    else:
+      return IrcClient.on_mode(self, parts, write_cb)
 
   def on_353(self, parts, write_cb):
     """We want more info about anyone listed in /NAMES."""
@@ -368,7 +428,9 @@ class IrcLogger(IrcClient):
                                    .replace('+', '').split())
 
   def on_366(self, parts, write_cb):
-    """On end of /NAMES, run /WHOIS for interesting peoples."""
+    """On end of /NAMES, run /MODE and /WHOIS to gather channel info."""
+    channel = parts[3]
+    write_cb('MODE %s\r\nTOPIC %s\r\n' % (channel, channel))
     if self.want_whois:
       self.irc_whois(self.want_whois.pop(0), write_cb)
 
