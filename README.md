@@ -61,7 +61,7 @@ The combined "binary" is generated using
 
 A bunch of ideas by importance/feasibility:
 
-   * Twitter / Facebook / BrowserID / Google /Gravatar authenticated sign in
+   * Twitter / Google / BrowserID+Gravatar authenticated sign in
    * Invite-only or Authenticated-only channels
    * Tagging/Starring/ThumbsUp/ThumbsDown for comments in the web UI
    * Election helper
@@ -74,9 +74,12 @@ A bunch of ideas by importance/feasibility:
    * Embeddeable UI for use as blog commenting engine?
    * Rebroadcast Twitter / ActivityStream feeds
    * Traditional bot roles: Banning users etc.
+   * Learn from: https://wiki.ubuntu.com/meetingology
 
 Done:
 
+   * OAuth2 log-in/out: Facebook works
+   * Chatting
    * Filtered view
    * Auto-link URLs
 

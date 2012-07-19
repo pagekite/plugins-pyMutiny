@@ -231,10 +231,10 @@ class Mutiny():
           })
 
         elif path.startswith('_api/v1/'):
-          return self.handleApiRequest(req, path, qs, posted, credentials)
+          return self.handleApiRequest(req, path, qs, posted)
 
         elif path.startswith('join/'):
-          template, page = self.prepareChannelPage(path, page)
+          template, page = self.prepareChannelPage(path, page, credentials)
 
         elif (path.startswith('_skin/') or
               path in ('favicon.ico', )):
@@ -255,7 +255,7 @@ class Mutiny():
 
       elif req.command == 'POST':
         if path.startswith('_api/v1/'):
-          return self.handleApiRequest(req, path, qs, posted, credentials)
+          return self.handleApiRequest(req, path, qs, posted)
         else:
           raise NotFoundException()
 
@@ -350,15 +350,22 @@ class Mutiny():
     print 'Logged in: %s' % HttpdLite.json_encode(profile, indent=2)
     return req.sendRedirect(page_prefix + state)
 
-  def prepareChannelPage(self, path, page):
+  def prepareChannelPage(self, path, page, credentials):
     network, channel = self.get_channel_from_path(path)
     nw_channels = self.config_irc.get(network, {}).get('channels', [])
     if channel in nw_channels:
+
+      uids = 'anon'
+      if network in credentials:
+        user = credentials[network]
+        uids = '%s,%s' % (user.uid, user.log_id)
+
       info = nw_channels[channel]
       page.update({
         'network': network,
         'network_desc': self.config_irc[network].get('description', network),
         'network_server': self.networks[network].server,
+        'uids': uids,
         'channel': channel,
         'channel_desc': info.get('description', channel),
         'channel_access': info.get('access', 'open').replace(',', ' '),
@@ -378,18 +385,22 @@ class Mutiny():
     ('Access-Control-Allow-Headers', 'content-length, authorization')
   ]
 
-  def handleApiRequest(self, req, path, qs, posted, credentials):
-    api, v1, network, channel = path.split('/')
+  def handleApiRequest(self, req, path, qs, posted):
+    api, v1, network, muid, channel = path.split('/')
+    if muid == 'anon':
+      user = None
+    else:
+      user = self.networks[network].users[muid]
     headers = self.CORS_HEADERS[:]
     method = (posted or qs).get('a', qs.get('a'))[0]
     mime_type, data = getattr(self, 'api_%s' % method
-                              )(network, self.fixup_channel(channel),
-                                req, qs, posted, credentials)
+                              )(network, user, self.fixup_channel(channel),
+                                req, qs, posted)
     return req.sendResponse(data,
                             mimetype=mime_type,
                             header_list=headers, cachectrl='no-cache')
 
-  def api_log(self, network, channel, req, qs, posted, credentials):
+  def api_log(self, network, user, channel, req, qs, posted):
     # FIXME: Choose between bots based on network
 
     grep = qs.get('grep', [''])[0]
@@ -427,8 +438,7 @@ class Mutiny():
 
     return 'application/json', HttpdLite.json_encode(data)
 
-  def api_logout(self, network, channel, req, qs, posted, credentials):
-    user = credentials[network]
+  def api_logout(self, network, user, channel, req, qs, posted):
     del self.networks[network].users[user.uid]
     req.setCookie('muid-%s' % network, '', delete=True)
 
@@ -436,8 +446,8 @@ class Mutiny():
     self.event_loop.sendall(sockfd, 'QUIT :Logged off\r\n')
     return 'application/json', HttpdLite.json_encode(['ok'])
 
-  def api_say(self, network, channel, req, qs, posted, credentials):
-    sockfd = self.event_loop.fds_by_uid[credentials[network].uid]
+  def api_say(self, network, user, channel, req, qs, posted):
+    sockfd = self.event_loop.fds_by_uid[user.uid]
     privmsg = 'PRIVMSG %s :%s\r\n' % (channel,
                                       posted['msg'][0].decode('utf-8'))
     self.event_loop.sendall(sockfd, privmsg.encode('utf-8'))

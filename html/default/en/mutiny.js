@@ -1,12 +1,24 @@
-function Mutiny(mutiny_host, mutiny_network, mutiny_channel, global) {
+function Mutiny(mutiny_host, mutiny_network, mutiny_uids, mutiny_channel,
+                global) {
   var dom = null;
+  var mutiny_uid = null;
+  var mutiny_log_id = null;
+
+  if (mutiny_uids && mutiny_uids != 'anon') {
+    var muids = mutiny_uids.split(',');
+    mutiny_uid = muids[0];
+    mutiny_log_id = muids[1];
+  }
+  var mutiny_api_url = (
+    mutiny_host+'/_api/v1/'+mutiny_network+'/'+mutiny_uids+'/'+mutiny_channel
+  ).replace(/#/g, '');
+
   var mutiny = {
     channel_log: [],
     avatars: {},
     seen: '0',
     dom: dom,
 
-    api_url: '',
     retry: 1,
     max_retry: 64,
     max_retry_timeout: 8,
@@ -67,15 +79,6 @@ function Mutiny(mutiny_host, mutiny_network, mutiny_channel, global) {
       var refresh = Math.round((0.5 + Math.random()) * mutiny.refresh);
       setTimeout(global+'.load_data('+refresh+');', Math.random() * 100);
 
-      var muids = mutiny.get_cookie('muid-'+mutiny_network);
-      var muid = null;
-      var log_id = null;
-      if (muids) {
-        muids = muids.split(',');
-        muid = muids[0];
-        log_id = muids[1];
-      }
-
       for (idx in data) {
         mutiny.channel_log.push(data[idx]);
         var iid = data[idx][0];
@@ -89,7 +92,7 @@ function Mutiny(mutiny_host, mutiny_network, mutiny_channel, global) {
         }
         if (info.event == 'whois') {
           dom_id = info.uid;
-          if (info.uid == log_id) {
+          if (info.uid == mutiny_log_id) {
             target = 'me';
           }
           else {
@@ -153,8 +156,8 @@ function Mutiny(mutiny_host, mutiny_network, mutiny_channel, global) {
         if (iid > mutiny.seen) mutiny.seen = iid;
       }
 
-      if (muids) {
-        if (mutiny.avatars[log_id]) {
+      if (mutiny_uid) {
+        if (mutiny.avatars[mutiny_log_id]) {
           dom.find('#loginpending, #pleaselogin').hide();
           dom.find('#input, #presence').show();
         }
@@ -191,7 +194,7 @@ function Mutiny(mutiny_host, mutiny_network, mutiny_channel, global) {
       if (mutiny.running > 0) return;
       mutiny.running += 1;
       $.ajax({
-        url: mutiny.api_url,
+        url: mutiny_api_url,
         timeout: (timeout+10) * 1000,
         dataType: 'json',
         data: {
@@ -267,7 +270,7 @@ function Mutiny(mutiny_host, mutiny_network, mutiny_channel, global) {
 
       dom.find('form#input').removeClass('error').addClass('sending');
       $.ajax({
-        url: mutiny.api_url,
+        url: mutiny_api_url,
         timeout: 10 * 1000,
         dataType: 'json',
         type: 'POST',
@@ -291,7 +294,7 @@ function Mutiny(mutiny_host, mutiny_network, mutiny_channel, global) {
 
     logout: function() {
       $.ajax({
-        url: mutiny.api_url,
+        url: mutiny_api_url,
         timeout: 10 * 1000,
         dataType: 'json',
         type: 'POST',
@@ -313,8 +316,6 @@ function Mutiny(mutiny_host, mutiny_network, mutiny_channel, global) {
       dom.find('p.toggle').click(mutiny.toggle_filter);
       dom.find('#logout').click(mutiny.logout);
       dom.find('input[name=filter]').click(mutiny.filter_all);
-      mutiny.api_url = (mutiny_host+'/_api/v1/'+mutiny_network+'/'+mutiny_channel
-                        ).replace(/#/g, '');
       mutiny.load_data(0);
     }
   };
